@@ -7,21 +7,23 @@ import android.view.MenuItem;
 
 import net.cjlucas.kanihi.data.parser.JsonTrackArrayParser;
 import net.cjlucas.kanihi.model.Track;
+import net.cjlucas.kanihi.data.DataStore;
 
 public class MainActivity extends Activity {
+    private static DataStore mDataStore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        JsonTrackArrayParser parser = new JsonTrackArrayParser(getResources().openRawResource(R.raw.tracks));
-        System.out.println(parser.getTracks().size());
-        System.out.println(parser.getTracks().size());
+        mDataStore = new DataStore(this);
 
-        for (Track track : parser.getTracks()) {
-            System.out.println(track.getUuid());
-        }
+        long start = System.currentTimeMillis();
+        mDataStore.update(getResources().openRawResource(R.raw.tracks));
+        System.err.println("Update took: " + (System.currentTimeMillis() - start));
+
+        mDataStore.close();
     }
 
 
