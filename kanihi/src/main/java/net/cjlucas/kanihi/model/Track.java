@@ -1,7 +1,10 @@
 package net.cjlucas.kanihi.model;
 
 import com.j256.ormlite.field.DatabaseField;
+import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
+
+import java.util.List;
 
 @DatabaseTable(tableName = "tracks")
 public class Track {
