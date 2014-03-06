@@ -8,19 +8,25 @@ import java.util.List;
 
 @DatabaseTable(tableName = "tracks")
 public class Track {
-    @DatabaseField(id = true, columnName = "uuid")
+    public static final String COLUMN_UUID         = "uuid";
+    public static final String COLUMN_TITLE        = "title";
+    public static final String COLUMN_SUBTITLE     = "subtitle";
+    public static final String COLUMN_TRACK_NUM    = "track_num";
+    public static final String COLUMN_DURATION     = "duration";
+
+    @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
 
-    @DatabaseField(columnName = "name")
+    @DatabaseField(columnName = COLUMN_TITLE)
     private String mTitle;
 
-    @DatabaseField(columnName = "subtitle")
+    @DatabaseField(columnName = COLUMN_SUBTITLE)
     private String subtitle;
 
-    @DatabaseField(columnName = "num")
+    @DatabaseField(columnName = COLUMN_TRACK_NUM)
     private int mNum;
 
-    @DatabaseField(columnName = "duration")
+    @DatabaseField(columnName = COLUMN_DURATION)
     private int duration;
 
     @DatabaseField(foreign = true)

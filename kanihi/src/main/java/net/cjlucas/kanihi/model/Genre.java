@@ -7,10 +7,13 @@ import com.j256.ormlite.table.DatabaseTable;
 
 @DatabaseTable(tableName = "genres")
 public class Genre {
-    @DatabaseField(id = true, columnName = "uuid")
+    public static final String COLUMN_UUID = "uuid";
+    public static final String COLUMN_NAME = "name";
+
+    @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String uuid;
 
-    @DatabaseField(columnName = "name")
+    @DatabaseField(columnName = COLUMN_NAME)
     private String name;
 
     @ForeignCollectionField
