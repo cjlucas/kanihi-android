@@ -16,6 +16,7 @@ public class JsonTrackArrayParser {
     private static final String KEY_TRACK = "track";
     private static final String KEY_GENRE = "genre";
     private static final String KEY_DISC = "disc";
+    private static final String KEY_ALBUM = "album";
 
     private static abstract class JsonModelParser {
         private static final SimpleDateFormat mDateFormatter
@@ -107,7 +108,26 @@ public class JsonTrackArrayParser {
             disc.setSubtitle(getString(jsonObject, KEY_DISC_SUBTITLE));
             disc.setTotalTracks(getInt(jsonObject, KEY_DISC_TOTAL_TRACKS));
 
+            JSONObject albumObject = (JSONObject)jsonObject.get(KEY_ALBUM);
+            if (albumObject != null) disc.setAlbum(JsonAlbumParser.parse(albumObject));
+
             return disc;
+        }
+    }
+
+    public static class JsonAlbumParser extends JsonModelParser {
+        private static final String KEY_ALBUM_UUID = "uuid";
+        private static final String KEY_ALBUM_TITLE = "name";
+        private static final String KEY_ALBUM_TOTAL_DISCS = "total_discs";
+
+        public static Album parse(JSONObject jsonObject) {
+            Album album = new Album();
+
+            album.setUuid(getString(jsonObject, KEY_ALBUM_UUID));
+            album.setTitle(getString(jsonObject, KEY_ALBUM_TITLE));
+            album.setTotalDiscs(getInt(jsonObject, KEY_ALBUM_TOTAL_DISCS));
+
+            return album;
         }
     }
 

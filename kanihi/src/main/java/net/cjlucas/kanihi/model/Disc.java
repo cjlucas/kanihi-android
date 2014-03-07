@@ -9,6 +9,7 @@ public class Disc {
     public static final String COLUMN_DISC_NUM = "disc_num";
     public static final String COLUMN_SUBTITLE = "subtitle";
     public static final String COLUMN_TOTAL_TRACKS = "total_tracks";
+    public static final String COLUMN_ALBUM = "album_id";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -21,6 +22,9 @@ public class Disc {
 
     @DatabaseField(columnName = COLUMN_TOTAL_TRACKS)
     private int mTotalTracks;
+
+    @DatabaseField(foreign = true, columnName = COLUMN_ALBUM)
+    private Album mAlbum;
 
     public String getUuid() {
         return mUuid;
@@ -52,5 +56,13 @@ public class Disc {
 
     public void setTotalTracks(int totalTracks) {
         mTotalTracks = totalTracks;
+    }
+
+    public Album getAlbum() {
+        return mAlbum;
+    }
+
+    public void setAlbum(Album album) {
+        mAlbum = album;
     }
 }

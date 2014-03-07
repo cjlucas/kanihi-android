@@ -60,7 +60,12 @@ public class DataStore {
             mDatabaseHelper.createOrUpdate(mDatabaseHelper.getGenreDao(), genre);
 
             Disc disc = track.getDisc();
-            if (disc != null) mDatabaseHelper.createOrUpdate(mDatabaseHelper.getDiscDao(), disc);
+            if (disc != null) {
+                mDatabaseHelper.createOrUpdate(mDatabaseHelper.getDiscDao(), disc);
+
+                Album album = disc.getAlbum();
+                if (album != null) mDatabaseHelper.createOrUpdate(mDatabaseHelper.getAlbumDao(), album);
+            }
 
             mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
         }
@@ -77,6 +82,7 @@ public class DataStore {
         private Dao<Track, String> mTrackDao;
         private Dao<Genre, String> mGenreDao;
         private Dao<Disc, String> mDiscDao;
+        private Dao<Album, String> mAlbumDao;
 
         public DatabaseHelper(Context context) {
             super(context, "kanihi.sqlite", null, 1);
@@ -90,6 +96,7 @@ public class DataStore {
                 TableUtils.createTable(connectionSource, Track.class);
                 TableUtils.createTable(connectionSource, Genre.class);
                 TableUtils.createTable(connectionSource, Disc.class);
+                TableUtils.createTable(connectionSource, Album.class);
             } catch (SQLException e) {
                 Log.e(TAG, "Couldn't create table");
                 throw new RuntimeException(e);
@@ -144,6 +151,15 @@ public class DataStore {
             }
 
             return mDiscDao;
+        }
+
+        @SuppressWarnings("unchecked")
+        public synchronized Dao<Album, String> getAlbumDao() {
+            if (mAlbumDao == null) {
+                mAlbumDao = (Dao<Album, String>)getDaoCatch(Album.class);
+            }
+
+            return mAlbumDao;
         }
     }
 }
