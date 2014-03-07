@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.j256.ormlite.android.apptools.OrmLiteSqliteOpenHelper;
 import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.table.TableUtils;
 
@@ -20,6 +21,9 @@ import java.util.List;
 
 public class DataStore {
     private static final String TAG = "DataStore";
+
+    private static DataStore mSharedDataStore;
+
     private Context mContext;
     private DatabaseHelper mDatabaseHelper;
 
@@ -33,6 +37,18 @@ public class DataStore {
 
     public void close() {
         mDatabaseHelper.close();
+    }
+
+    public static synchronized DataStore setupInstance(Context context) {
+        if (mSharedDataStore == null) {
+            mSharedDataStore = new DataStore(context);
+        }
+
+        return mSharedDataStore;
+    }
+
+    public static synchronized DataStore getInstance() {
+        return mSharedDataStore;
     }
 
     public void update(InputStream in) {
