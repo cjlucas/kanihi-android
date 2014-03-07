@@ -8,6 +8,7 @@ public class Album {
     public static final String COLUMN_UUID = "uuid";
     public static final String COLUMN_TITLE = "title";
     public static final String COLUMN_TOTAL_DISCS = "total_discs";
+    public static final String COLUMN_ALBUM_ARTIST = "album_artist_id";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -17,6 +18,9 @@ public class Album {
 
     @DatabaseField(columnName = COLUMN_TOTAL_DISCS)
     private int mTotalDiscs;
+
+    @DatabaseField(foreign = true, columnName = COLUMN_ALBUM_ARTIST)
+    private AlbumArtist mAlbumArtist;
 
     public String getUuid() {
         return mUuid;
@@ -40,5 +44,13 @@ public class Album {
 
     public void setTotalDiscs(int totalDiscs) {
         mTotalDiscs = totalDiscs;
+    }
+
+    public AlbumArtist getAlbumArtist() {
+        return mAlbumArtist;
+    }
+
+    public void setAlbumArtist(AlbumArtist albumArtist) {
+        mAlbumArtist = albumArtist;
     }
 }

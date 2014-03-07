@@ -17,6 +17,8 @@ public class JsonTrackArrayParser {
     private static final String KEY_GENRE = "genre";
     private static final String KEY_DISC = "disc";
     private static final String KEY_ALBUM = "album";
+    private static final String KEY_TRACK_ARTIST = "track_artist";
+    private static final String KEY_ALBUM_ARTIST = "album_artist";
 
     private static abstract class JsonModelParser {
         private static final SimpleDateFormat mDateFormatter
@@ -76,6 +78,10 @@ public class JsonTrackArrayParser {
             JSONObject discObject = (JSONObject)jsonObject.get(KEY_DISC);
             if (discObject != null) track.setDisc(JsonDiscParser.parse(discObject));
 
+            JSONObject trackArtistObject = (JSONObject)jsonObject.get(KEY_TRACK_ARTIST);
+            if (trackArtistObject != null) track.setTrackArtist(
+                    JsonTrackArtistParser.parse(trackArtistObject));
+
             return track;
         }
     }
@@ -127,7 +133,43 @@ public class JsonTrackArrayParser {
             album.setTitle(getString(jsonObject, KEY_ALBUM_TITLE));
             album.setTotalDiscs(getInt(jsonObject, KEY_ALBUM_TOTAL_DISCS));
 
+            JSONObject albumArtistObject = (JSONObject)jsonObject.get(KEY_ALBUM_ARTIST);
+            if (albumArtistObject != null) album.setAlbumArtist(
+                    JsonAlbumArtistParser.parse(albumArtistObject));
+
             return album;
+        }
+    }
+
+    public static class JsonTrackArtistParser extends JsonModelParser {
+        private static final String KEY_TRACK_ARTIST_UUID = "uuid";
+        private static final String KEY_TRACK_ARTIST_NAME = "name";
+        private static final String KEY_TRACK_ARTIST_SORT_NAME = "sort_name";
+
+        public static TrackArtist parse(JSONObject jsonObject) {
+            TrackArtist artist = new TrackArtist();
+
+            artist.setUuid(getString(jsonObject, KEY_TRACK_ARTIST_UUID));
+            artist.setName(getString(jsonObject, KEY_TRACK_ARTIST_NAME));
+            artist.setSortName(getString(jsonObject, KEY_TRACK_ARTIST_SORT_NAME));
+
+            return artist;
+        }
+    }
+
+    public static class JsonAlbumArtistParser extends JsonModelParser {
+        private static final String KEY_ALBUM_ARTIST_UUID = "uuid";
+        private static final String KEY_ALBUM_ARTIST_NAME = "name";
+        private static final String KEY_ALBUM_ARTIST_SORT_NAME = "sort_name";
+
+        public static AlbumArtist parse(JSONObject jsonObject) {
+            AlbumArtist artist = new AlbumArtist();
+
+            artist.setUuid(getString(jsonObject, KEY_ALBUM_ARTIST_UUID));
+            artist.setName(getString(jsonObject, KEY_ALBUM_ARTIST_NAME));
+            artist.setSortName(getString(jsonObject, KEY_ALBUM_ARTIST_SORT_NAME));
+
+            return artist;
         }
     }
 

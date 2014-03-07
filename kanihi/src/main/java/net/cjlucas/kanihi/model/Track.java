@@ -15,6 +15,7 @@ public class Track {
     public static final String COLUMN_DURATION      = "duration";
     public static final String COLUMN_GENRE         = "genre_id";
     public static final String COLUMN_DISC          = "disc_id";
+    public static final String COLUMN_TRACK_ARTIST  = "track_artist_id";
     public static final String COLUMN_DATE          = "date";
     public static final String COLUMN_ORIGINAL_DATE = "orig_date";
 
@@ -44,6 +45,9 @@ public class Track {
 
     @DatabaseField(foreign = true, columnName = COLUMN_DISC)
     private Disc mDisc;
+
+    @DatabaseField(foreign = true, columnName = COLUMN_TRACK_ARTIST)
+    private TrackArtist mTrackArtist;
 
 
     public Track() {
@@ -104,6 +108,14 @@ public class Track {
 
     public void setDisc(Disc disc) {
         mDisc = disc;
+    }
+
+    public TrackArtist getTrackArtist() {
+        return mTrackArtist;
+    }
+
+    public void setTrackArtist(TrackArtist trackArtist) {
+        mTrackArtist = trackArtist;
     }
 
     public Date getDate() {

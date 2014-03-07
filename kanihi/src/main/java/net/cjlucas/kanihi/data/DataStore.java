@@ -59,12 +59,22 @@ public class DataStore {
             Genre genre = track.getGenre();
             mDatabaseHelper.createOrUpdate(mDatabaseHelper.getGenreDao(), genre);
 
+            TrackArtist trackArtist = track.getTrackArtist();
+            if (trackArtist != null) mDatabaseHelper.createOrUpdate(
+                    mDatabaseHelper.getTrackArtistDao(), trackArtist);
+
             Disc disc = track.getDisc();
             if (disc != null) {
                 mDatabaseHelper.createOrUpdate(mDatabaseHelper.getDiscDao(), disc);
 
                 Album album = disc.getAlbum();
-                if (album != null) mDatabaseHelper.createOrUpdate(mDatabaseHelper.getAlbumDao(), album);
+                if (album != null) {
+                    mDatabaseHelper.createOrUpdate(mDatabaseHelper.getAlbumDao(), album);
+
+                    AlbumArtist albumArtist = album.getAlbumArtist();
+                    if (albumArtist != null) mDatabaseHelper.createOrUpdate(
+                            mDatabaseHelper.getAlbumArtistDao(), albumArtist);
+                }
             }
 
             mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
@@ -83,6 +93,8 @@ public class DataStore {
         private Dao<Genre, String> mGenreDao;
         private Dao<Disc, String> mDiscDao;
         private Dao<Album, String> mAlbumDao;
+        private Dao<TrackArtist, String> mTrackArtistDao;
+        private Dao<AlbumArtist, String> mAlbumArtistDao;
 
         public DatabaseHelper(Context context) {
             super(context, "kanihi.sqlite", null, 1);
@@ -97,6 +109,8 @@ public class DataStore {
                 TableUtils.createTable(connectionSource, Genre.class);
                 TableUtils.createTable(connectionSource, Disc.class);
                 TableUtils.createTable(connectionSource, Album.class);
+                TableUtils.createTable(connectionSource, TrackArtist.class);
+                TableUtils.createTable(connectionSource, AlbumArtist.class);
             } catch (SQLException e) {
                 Log.e(TAG, "Couldn't create table");
                 throw new RuntimeException(e);
@@ -160,6 +174,24 @@ public class DataStore {
             }
 
             return mAlbumDao;
+        }
+
+        @SuppressWarnings("unchecked")
+        public synchronized Dao<TrackArtist, String> getTrackArtistDao() {
+            if (mTrackArtistDao == null) {
+                mTrackArtistDao = (Dao<TrackArtist, String>)getDaoCatch(TrackArtist.class);
+            }
+
+            return mTrackArtistDao;
+        }
+
+        @SuppressWarnings("unchecked")
+        public synchronized Dao<AlbumArtist, String> getAlbumArtistDao() {
+            if (mAlbumArtistDao == null) {
+                mAlbumArtistDao = (Dao<AlbumArtist, String>)getDaoCatch(AlbumArtist.class);
+            }
+
+            return mAlbumArtistDao;
         }
     }
 }
