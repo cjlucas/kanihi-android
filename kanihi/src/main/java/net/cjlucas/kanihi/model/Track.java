@@ -1,20 +1,22 @@
 package net.cjlucas.kanihi.model;
 
+import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
-import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 
-import java.util.List;
+import java.util.Date;
 
 @DatabaseTable(tableName = "tracks")
 public class Track {
-    public static final String COLUMN_UUID         = "uuid";
-    public static final String COLUMN_TITLE        = "title";
-    public static final String COLUMN_SUBTITLE     = "subtitle";
-    public static final String COLUMN_TRACK_NUM    = "track_num";
-    public static final String COLUMN_DURATION     = "duration";
+    public static final String COLUMN_UUID          = "uuid";
+    public static final String COLUMN_TITLE         = "title";
+    public static final String COLUMN_SUBTITLE      = "subtitle";
+    public static final String COLUMN_TRACK_NUM     = "track_num";
+    public static final String COLUMN_DURATION      = "duration";
     public static final String COLUMN_GENRE         = "genre_id";
-    public static final String COLUMN_DISC         = "disc_id";
+    public static final String COLUMN_DISC          = "disc_id";
+    public static final String COLUMN_DATE          = "date";
+    public static final String COLUMN_ORIGINAL_DATE = "orig_date";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -31,11 +33,18 @@ public class Track {
     @DatabaseField(columnName = COLUMN_DURATION)
     private int duration;
 
+    @DatabaseField(dataType = DataType.DATE, columnName = COLUMN_DATE)
+    private Date mDate;
+
+    @DatabaseField(dataType = DataType.DATE, columnName = COLUMN_ORIGINAL_DATE)
+    private Date mOriginalDate;
+
     @DatabaseField(foreign = true, columnName = COLUMN_GENRE)
     private Genre genre;
 
     @DatabaseField(foreign = true, columnName = COLUMN_DISC)
     private Disc mDisc;
+
 
     public Track() {
 
@@ -95,5 +104,21 @@ public class Track {
 
     public void setDisc(Disc disc) {
         mDisc = disc;
+    }
+
+    public Date getDate() {
+        return mDate;
+    }
+
+    public void setDate(Date date) {
+        mDate = date;
+    }
+
+    public Date getOriginalDate() {
+        return mOriginalDate;
+    }
+
+    public void setOriginalDate(Date originalDate) {
+        mOriginalDate = originalDate;
     }
 }

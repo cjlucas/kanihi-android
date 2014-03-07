@@ -6,7 +6,10 @@ import net.minidev.json.JSONObject;
 import net.minidev.json.JSONValue;
 
 import java.io.InputStream;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class JsonTrackArrayParser {
@@ -15,6 +18,9 @@ public class JsonTrackArrayParser {
     private static final String KEY_DISC = "disc";
 
     private static abstract class JsonModelParser {
+        private static final SimpleDateFormat mDateFormatter
+                = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss'Z'");
+
         public static Object getObject(JSONObject o, String key, Object fallback) {
             Object val = o.get(key);
             return val == null ? fallback : val;
@@ -27,14 +33,30 @@ public class JsonTrackArrayParser {
         public static int getInt(JSONObject o, String key) {
             return (int)getObject(o, key, 0);
         }
+
+        public static Date getDate(JSONObject o, String key) {
+            Object obj = getObject(o, key, null);
+            if (obj == null) return null;
+
+            Date date = null;
+            try {
+                date = mDateFormatter.parse((String)obj);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+
+            return date;
+        }
     }
 
     public static class JsonTrackParser extends JsonModelParser {
-        private static final String KEY_TRACK_UUID = "uuid";
-        private static final String KEY_TRACK_TITLE = "name";
-        private static final String KEY_TRACK_SUBTITLE = "subtitle";
-        private static final String KEY_TRACK_NUM = "num";
-        private static final String KEY_TRACK_DURATION = "duration";
+        private static final String KEY_TRACK_UUID          = "uuid";
+        private static final String KEY_TRACK_TITLE         = "name";
+        private static final String KEY_TRACK_SUBTITLE      = "subtitle";
+        private static final String KEY_TRACK_NUM           = "num";
+        private static final String KEY_TRACK_DURATION      = "duration";
+        private static final String KEY_TRACK_DATE          = "date";
+        private static final String KEY_TRACK_ORIGINAL_DATE = "original_date";
 
         public static Track parse(JSONObject jsonObject) {
             Track track = new Track();
@@ -44,6 +66,8 @@ public class JsonTrackArrayParser {
             track.setSubtitle(getString(jsonObject, KEY_TRACK_SUBTITLE));
             track.setNum(getInt(jsonObject, KEY_TRACK_NUM));
             track.setDuration(getInt(jsonObject, KEY_TRACK_DURATION));
+            track.setDate(getDate(jsonObject, KEY_TRACK_DATE));
+            track.setOriginalDate(getDate(jsonObject, KEY_TRACK_ORIGINAL_DATE));
 
             JSONObject genreObject = (JSONObject)jsonObject.get(KEY_GENRE);
             if (genreObject != null) track.setGenre(JsonGenreParser.parse(genreObject));
@@ -70,10 +94,10 @@ public class JsonTrackArrayParser {
     }
 
     public static class JsonDiscParser extends JsonModelParser {
-        private static final String KEY_DISC_UUID = "uuid";
-        private static final String KEY_DISC_NUM = "num";
-        private static final String KEY_DISC_SUBTITLE = "subtitle";
-        private static final String KEY_DISC_TOTAL_TRACKS = "total_tracks";
+        private static final String KEY_DISC_UUID           = "uuid";
+        private static final String KEY_DISC_NUM            = "num";
+        private static final String KEY_DISC_SUBTITLE       = "subtitle";
+        private static final String KEY_DISC_TOTAL_TRACKS   = "total_tracks";
 
         public static Disc parse(JSONObject jsonObject) {
             Disc disc = new Disc();
@@ -98,7 +122,7 @@ public class JsonTrackArrayParser {
 
         for (Object o : mJsonArray) {
             Object trackJsonObject = ((JSONObject)o).get(KEY_TRACK);
-            tracks.add(JsonTrackParser.parse((JSONObject)trackJsonObject));
+            tracks.add(JsonTrackParser.parse((JSONObject) trackJsonObject));
         }
 
         return tracks;
