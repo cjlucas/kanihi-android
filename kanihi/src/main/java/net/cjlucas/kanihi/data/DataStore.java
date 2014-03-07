@@ -43,6 +43,9 @@ public class DataStore {
             Genre genre = track.getGenre();
             mDatabaseHelper.createOrUpdate(mDatabaseHelper.getGenreDao(), genre);
 
+            Disc disc = track.getDisc();
+            if (disc != null) mDatabaseHelper.createOrUpdate(mDatabaseHelper.getDiscDao(), disc);
+
             mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
         }
 
@@ -57,6 +60,7 @@ public class DataStore {
     private class DatabaseHelper extends OrmLiteSqliteOpenHelper {
         private Dao<Track, String> mTrackDao;
         private Dao<Genre, String> mGenreDao;
+        private Dao<Disc, String> mDiscDao;
 
         public DatabaseHelper(Context context) {
             super(context, "kanihi.sqlite", null, 1);
@@ -69,6 +73,7 @@ public class DataStore {
             try {
                 TableUtils.createTable(connectionSource, Track.class);
                 TableUtils.createTable(connectionSource, Genre.class);
+                TableUtils.createTable(connectionSource, Disc.class);
             } catch (SQLException e) {
                 Log.e(TAG, "Couldn't create table");
                 throw new RuntimeException(e);
@@ -114,6 +119,15 @@ public class DataStore {
             }
 
             return mGenreDao;
+        }
+
+        @SuppressWarnings("unchecked")
+        public synchronized Dao<Disc, String> getDiscDao() {
+            if (mDiscDao == null) {
+                mDiscDao = (Dao<Disc, String>)getDaoCatch(Disc.class);
+            }
+
+            return mDiscDao;
         }
     }
 }

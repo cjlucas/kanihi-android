@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JsonTrackArrayParser {
-    private static final String KEY_TRACKS = "track";
+    private static final String KEY_TRACK = "track";
+    private static final String KEY_GENRE = "genre";
+    private static final String KEY_DISC = "disc";
 
     private static abstract class JsonModelParser {
         public static Object getObject(JSONObject o, String key, Object fallback) {
@@ -43,8 +45,11 @@ public class JsonTrackArrayParser {
             track.setNum(getInt(jsonObject, KEY_TRACK_NUM));
             track.setDuration(getInt(jsonObject, KEY_TRACK_DURATION));
 
-            JSONObject genreObject = (JSONObject)jsonObject.get("genre");
+            JSONObject genreObject = (JSONObject)jsonObject.get(KEY_GENRE);
             if (genreObject != null) track.setGenre(JsonGenreParser.parse(genreObject));
+
+            JSONObject discObject = (JSONObject)jsonObject.get(KEY_DISC);
+            if (discObject != null) track.setDisc(JsonDiscParser.parse(discObject));
 
             return track;
         }
@@ -64,6 +69,24 @@ public class JsonTrackArrayParser {
         }
     }
 
+    public static class JsonDiscParser extends JsonModelParser {
+        private static final String KEY_DISC_UUID = "uuid";
+        private static final String KEY_DISC_NUM = "num";
+        private static final String KEY_DISC_SUBTITLE = "subtitle";
+        private static final String KEY_DISC_TOTAL_TRACKS = "total_tracks";
+
+        public static Disc parse(JSONObject jsonObject) {
+            Disc disc = new Disc();
+
+            disc.setUuid(getString(jsonObject, KEY_DISC_UUID));
+            disc.setDiscNum(getInt(jsonObject, KEY_DISC_NUM));
+            disc.setSubtitle(getString(jsonObject, KEY_DISC_SUBTITLE));
+            disc.setTotalTracks(getInt(jsonObject, KEY_DISC_TOTAL_TRACKS));
+
+            return disc;
+        }
+    }
+
     private JSONArray mJsonArray;
 
     public JsonTrackArrayParser(InputStream in) {
@@ -74,7 +97,7 @@ public class JsonTrackArrayParser {
         ArrayList<Track> tracks = new ArrayList<>();
 
         for (Object o : mJsonArray) {
-            Object trackJsonObject = ((JSONObject)o).get(KEY_TRACKS);
+            Object trackJsonObject = ((JSONObject)o).get(KEY_TRACK);
             tracks.add(JsonTrackParser.parse((JSONObject)trackJsonObject));
         }
 

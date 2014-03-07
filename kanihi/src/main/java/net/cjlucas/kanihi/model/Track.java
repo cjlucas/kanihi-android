@@ -13,6 +13,8 @@ public class Track {
     public static final String COLUMN_SUBTITLE     = "subtitle";
     public static final String COLUMN_TRACK_NUM    = "track_num";
     public static final String COLUMN_DURATION     = "duration";
+    public static final String COLUMN_GENRE         = "genre_id";
+    public static final String COLUMN_DISC         = "disc_id";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -29,8 +31,11 @@ public class Track {
     @DatabaseField(columnName = COLUMN_DURATION)
     private int duration;
 
-    @DatabaseField(foreign = true)
+    @DatabaseField(foreign = true, columnName = COLUMN_GENRE)
     private Genre genre;
+
+    @DatabaseField(foreign = true, columnName = COLUMN_DISC)
+    private Disc mDisc;
 
     public Track() {
 
@@ -82,5 +87,13 @@ public class Track {
 
     public void setGenre(Genre genre) {
         this.genre = genre;
+    }
+
+    public Disc getDisc() {
+        return mDisc;
+    }
+
+    public void setDisc(Disc disc) {
+        mDisc = disc;
     }
 }
