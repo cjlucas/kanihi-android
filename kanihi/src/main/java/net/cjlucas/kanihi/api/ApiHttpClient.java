@@ -7,11 +7,15 @@ import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicHeader;
 
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
+import java.util.List;
 
 public class ApiHttpClient {
     private static ApiHttpClient mApiClient;
@@ -43,11 +47,15 @@ public class ApiHttpClient {
     }
 
     private static String getUrl(String path) {
+        String host = getInstance().mApiHost;
+        int port = getInstance().mApiPort;
+
+        if (host == null || port < 1) {
+            throw new RuntimeException("API endpoint info is not set");
+        }
 
         try {
-            path = path == null ? "/" : path;
-            URL url = new URL("http", getInstance().mApiHost, getInstance().mApiPort, path);
-            return url.toString();
+            return new URL("http", host, port, path == null ? "/" : path).toString();
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
@@ -89,5 +97,38 @@ public class ApiHttpClient {
                         callback.onFailure();
                     }
         });
+    }
+
+    public static void getDeletedTracks(List<String> uuids,
+                                        final Callback<List<String>> callback) {
+
+        JSONArray jsonArray = new JSONArray();
+        for (String uuid : uuids) jsonArray.add(uuid);
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("current_tracks", jsonArray);
+
+        HttpEntity postEntity;
+        try {
+            postEntity = new StringEntity(jsonObject.toJSONString());
+        } catch (UnsupportedEncodingException e) {
+            callback.onFailure();
+            return;
+        }
+
+        getInstance().mAsyncClient.post(null, getUrl("/tracks/deleted.json"),
+                postEntity, "application/json", new JsonObjectHttpResponseHandler() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers, String s, JSONObject jsonObject) {
+                        callback.onSuccess((List<String>)jsonObject.get("deleted_tracks"));
+                    }
+
+                    @Override
+                    public void onFailure(int statusCode, Header[] headers, Throwable throwable, String s, JSONObject jsonObject) {
+                        callback.onFailure();
+                    }
+                }
+        );
     }
 }
