@@ -173,16 +173,11 @@ public class JsonTrackArrayParser {
         }
     }
 
-    private JSONArray mJsonArray;
 
-    public JsonTrackArrayParser(InputStream in) {
-        mJsonArray = (JSONArray)JSONValue.parse(in);
-    }
-
-    public List<Track> getTracks() {
+    public static List<Track> getTracks(JSONArray jsonArray) {
         ArrayList<Track> tracks = new ArrayList<>();
 
-        for (Object o : mJsonArray) {
+        for (Object o : jsonArray) {
             Object trackJsonObject = ((JSONObject)o).get(KEY_TRACK);
             tracks.add(JsonTrackParser.parse((JSONObject) trackJsonObject));
         }

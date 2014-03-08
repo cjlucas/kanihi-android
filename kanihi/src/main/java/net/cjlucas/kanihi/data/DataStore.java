@@ -12,8 +12,10 @@ import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.table.TableUtils;
 
+import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.parser.JsonTrackArrayParser;
 import net.cjlucas.kanihi.model.*;
+import net.minidev.json.JSONArray;
 
 import java.io.InputStream;
 import java.sql.SQLException;
@@ -51,41 +53,41 @@ public class DataStore {
         return mSharedDataStore;
     }
 
-    public void update(InputStream in) {
-        JsonTrackArrayParser parser = new JsonTrackArrayParser(in);
+    public void update() {
+        ApiHttpClient.getTracks(0, 10, null, new ApiHttpClient.Callback<JSONArray>() {
+            @Override
+            public void onSuccess(JSONArray data) {
+                List<Track> tracks = JsonTrackArrayParser.getTracks(data);
+                for (Track track : tracks) {
+                    Genre genre = track.getGenre();
+                    mDatabaseHelper.createOrUpdate(mDatabaseHelper.getGenreDao(), genre);
 
-        List<Track> tracks = parser.getTracks();
-        for (Track track : tracks) {
-            Genre genre = track.getGenre();
-            mDatabaseHelper.createOrUpdate(mDatabaseHelper.getGenreDao(), genre);
+                    TrackArtist trackArtist = track.getTrackArtist();
+                    if (trackArtist != null) mDatabaseHelper.createOrUpdate(
+                            mDatabaseHelper.getTrackArtistDao(), trackArtist);
 
-            TrackArtist trackArtist = track.getTrackArtist();
-            if (trackArtist != null) mDatabaseHelper.createOrUpdate(
-                    mDatabaseHelper.getTrackArtistDao(), trackArtist);
+                    Disc disc = track.getDisc();
+                    if (disc != null) {
+                        mDatabaseHelper.createOrUpdate(mDatabaseHelper.getDiscDao(), disc);
 
-            Disc disc = track.getDisc();
-            if (disc != null) {
-                mDatabaseHelper.createOrUpdate(mDatabaseHelper.getDiscDao(), disc);
+                        Album album = disc.getAlbum();
+                        if (album != null) {
+                            mDatabaseHelper.createOrUpdate(mDatabaseHelper.getAlbumDao(), album);
 
-                Album album = disc.getAlbum();
-                if (album != null) {
-                    mDatabaseHelper.createOrUpdate(mDatabaseHelper.getAlbumDao(), album);
+                            AlbumArtist albumArtist = album.getAlbumArtist();
+                            if (albumArtist != null) mDatabaseHelper.createOrUpdate(
+                                    mDatabaseHelper.getAlbumArtistDao(), albumArtist);
+                        }
+                    }
 
-                    AlbumArtist albumArtist = album.getAlbumArtist();
-                    if (albumArtist != null) mDatabaseHelper.createOrUpdate(
-                            mDatabaseHelper.getAlbumArtistDao(), albumArtist);
+                    mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
                 }
             }
 
-            mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
-        }
-
-    }
-
-    public void addTrack(Track track) {
-        try {
-            mDatabaseHelper.getTrackDao().createOrUpdate(track);
-        } catch (SQLException e) { Log.e(TAG, "addTrack error"); }
+            @Override
+            public void onFailure() {
+            }
+        });
     }
 
     private class DatabaseHelper extends OrmLiteSqliteOpenHelper {
@@ -137,6 +139,7 @@ public class DataStore {
                 dao.createOrUpdate(o);
             } catch (SQLException e) {
                 Log.e(TAG, "error with createOrUpdate");
+                throw new RuntimeException(e);
             }
         }
 

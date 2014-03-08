@@ -18,15 +18,13 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        ApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
+
         mDataStore = new DataStore(this);
 
         long start = System.currentTimeMillis();
-        mDataStore.update(getResources().openRawResource(R.raw.tracks));
+        mDataStore.update();
         System.err.println("Update took: " + (System.currentTimeMillis() - start));
-
-        mDataStore.close();
-
-        ApiHttpClient.getTracks(0, 10, null, null);
     }
 
 
