@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.parser.JsonTrackArrayParser;
 import net.cjlucas.kanihi.model.Track;
 import net.cjlucas.kanihi.data.DataStore;
@@ -24,6 +25,8 @@ public class MainActivity extends Activity {
         System.err.println("Update took: " + (System.currentTimeMillis() - start));
 
         mDataStore.close();
+
+        ApiHttpClient.getTracks(0, 10, null, null);
     }
 
 
