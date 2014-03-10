@@ -69,7 +69,6 @@ public class ApiHttpClient {
 
     public static void getTracks(long offset, long limit, Date lastUpdatedAt,
                                  final Callback<JSONArray> callback) {
-        Log.e("hi", "here");
         Header[] headers = {
                 new BasicHeader("SQL-Offset", String.valueOf(offset)),
                 new BasicHeader("SQL-Limit", String.valueOf(limit)),

@@ -131,7 +131,7 @@ public class DataStore extends Thread implements Handler.Callback {
     private void handleUpdateDb(Message message) {
         if (mModelCache == null) mModelCache = new HashSet<>(5000); // TODO: figure out when to delete this
 
-        ApiHttpClient.Callback<JSONArray> callback = new ApiHttpClient.Callback<JSONArray>() {
+        final ApiHttpClient.Callback<JSONArray> callback = new ApiHttpClient.Callback<JSONArray>() {
             @Override
             public void onSuccess(JSONArray data) {
                 Log.v(TAG, "received data of size " + data.size());
@@ -145,9 +145,21 @@ public class DataStore extends Thread implements Handler.Callback {
             }
         };
 
-        for (int offset = 0; offset <= 5000; offset += 1000) {
-            ApiHttpClient.getTracks(offset, 1000, null, callback);
-        }
+        ApiHttpClient.getTrackCount(new ApiHttpClient.Callback<Integer>() {
+            @Override
+            public void onSuccess(Integer totalTracks) {
+                Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
+                for (int offset = 0; offset <= totalTracks; offset += 1000) {
+                    ApiHttpClient.getTracks(offset, 1000, null, callback);
+                }
+            }
+
+            @Override
+            public void onFailure() {
+                Log.e(TAG, "getTrackCount failed");
+            }
+        });
+
     }
 
     private <T> boolean isInCache(T object) {
@@ -193,6 +205,7 @@ public class DataStore extends Thread implements Handler.Callback {
 //                    mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
                     mDatabaseHelper.getTrackDao().create(track);
                 }
+                tracks.clear();
                 return null;
             }
         });

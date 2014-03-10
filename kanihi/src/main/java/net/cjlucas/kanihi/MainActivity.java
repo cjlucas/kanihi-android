@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
 import com.j256.ormlite.dao.CloseableIterator;
 
@@ -30,7 +31,7 @@ public class MainActivity extends Activity implements AsyncQueryMonitor.Listener
         DataStore.setupInstance(this);
         mDataStore = DataStore.getInstance();
 
-        mDataStore.update();
+//        mDataStore.update();
 
 //        for (int i = 0; i < 20; i++) {
 //            int token = mDataStore.getTracks();
@@ -42,8 +43,8 @@ public class MainActivity extends Activity implements AsyncQueryMonitor.Listener
 
     }
 
-    public <T> List<?> thing(List<T> what) {
-        return (List<?>)what;
+    public void updateDb(View v) {
+        DataStore.getInstance().update();
     }
 
 
