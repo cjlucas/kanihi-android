@@ -1,5 +1,7 @@
 package net.cjlucas.kanihi.api;
 
+import android.util.Log;
+
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.JsonHttpResponseHandler;
 
@@ -16,6 +18,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class ApiHttpClient {
     private static ApiHttpClient mApiClient;
@@ -38,6 +42,7 @@ public class ApiHttpClient {
 
     public ApiHttpClient() {
         mAsyncClient = new AsyncHttpClient();
+        mAsyncClient.setThreadPool((ThreadPoolExecutor)Executors.newFixedThreadPool(1));
         mAsyncClient.setMaxConnections(1);
     }
 
@@ -64,6 +69,7 @@ public class ApiHttpClient {
 
     public static void getTracks(long offset, long limit, Date lastUpdatedAt,
                                  final Callback<JSONArray> callback) {
+        Log.e("hi", "here");
         Header[] headers = {
                 new BasicHeader("SQL-Offset", String.valueOf(offset)),
                 new BasicHeader("SQL-Limit", String.valueOf(limit)),
@@ -73,6 +79,7 @@ public class ApiHttpClient {
         getInstance().mAsyncClient.get(null, getUrl("/tracks.json"), headers, null,
                 new JsonArrayHttpResponseHandler() {
                     public void onSuccess(int i, Header[] headers, String s, JSONArray objects) {
+                        Log.e("hi", "got a response");
                         callback.onSuccess(objects);
                     }
                     public void onFailure(int statusCode, Header[] headers, Throwable e,

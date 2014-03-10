@@ -70,10 +70,10 @@
     </content>
     <orderEntry type="jdk" jdkName="Android API 19 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" exported="" name="ormlite-android-4.48" level="project" />
     <orderEntry type="library" exported="" name="android-async-http-1.4.4" level="project" />
-    <orderEntry type="library" exported="" name="ormlite-core-4.48" level="project" />
     <orderEntry type="library" exported="" name="json-smart-1.2" level="project" />
+    <orderEntry type="library" exported="" name="ormlite-android-fork" level="project" />
+    <orderEntry type="library" exported="" name="ormlite-core" level="project" />
   </component>
 </module>
 

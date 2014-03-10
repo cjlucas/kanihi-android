@@ -5,26 +5,45 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.j256.ormlite.dao.CloseableIterator;
+
 import net.cjlucas.kanihi.api.ApiHttpClient;
-import net.cjlucas.kanihi.data.parser.JsonTrackArrayParser;
+import net.cjlucas.kanihi.data.AsyncQueryMonitor;
 import net.cjlucas.kanihi.model.Track;
 import net.cjlucas.kanihi.data.DataStore;
 
-public class MainActivity extends Activity {
+import java.sql.SQLException;
+import java.util.List;
+
+public class MainActivity extends Activity implements AsyncQueryMonitor.Listener<Track> {
     private static DataStore mDataStore;
+    private long start;
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         ApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
 
-        mDataStore = new DataStore(this);
+        DataStore.setupInstance(this);
+        mDataStore = DataStore.getInstance();
 
-        long start = System.currentTimeMillis();
         mDataStore.update();
-        System.err.println("Update took: " + (System.currentTimeMillis() - start));
+
+//        for (int i = 0; i < 20; i++) {
+//            int token = mDataStore.getTracks();
+//            System.err.println("GOT DA TOKEN!: " + token);
+//            try { Thread.sleep(500); } catch (Exception e) {}
+//            start = System.currentTimeMillis();
+//            mDataStore.registerQueryMonitorListener(token, this);
+//        }
+
+    }
+
+    public <T> List<?> thing(List<T> what) {
+        return (List<?>)what;
     }
 
 
@@ -48,4 +67,16 @@ public class MainActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void onQueryComplete(CloseableIterator<Track> iterator) {
+        System.err.println("GOT DA ITERATOR");
+        System.err.println(System.currentTimeMillis() - start);
+        while (iterator.hasNext()) {
+            try {
+                System.err.println(iterator.current().getTitle());
+            } catch (SQLException e) {}
+        }
+
+        iterator.closeQuietly();
+    }
 }
