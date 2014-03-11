@@ -13,6 +13,7 @@ import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.misc.TransactionManager;
 import com.j256.ormlite.stmt.PreparedQuery;
 import com.j256.ormlite.stmt.QueryBuilder;
+import com.j256.ormlite.stmt.Where;
 import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.table.TableUtils;
 
@@ -95,11 +96,78 @@ public class DataStore extends Thread implements Handler.Callback {
         mQueryMonitor.registerListener(listener, token);
     }
 
+    private int getTracks(Where<Track, String> where) throws SQLException {
+        Dao<Track, String> dao = mDatabaseHelper.getTrackDao();
+        QueryBuilder<Track, String> qb = dao.queryBuilder();
+        qb.setWhere(where);
+        return mDatabaseHelper.submit(dao, qb.prepare());
+    }
+
     public int getTracks() {
-        Dao<Track, ?> dao = mDatabaseHelper.getTrackDao();
         try {
+            Dao<Track, ?> dao = mDatabaseHelper.getTrackDao();
             PreparedQuery<Track> query = dao.queryBuilder().prepare();
             return mDatabaseHelper.submit(dao, query);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getTracks(Album album) {
+        try {
+            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+                    .where().in(Track.COLUMN_DISC, album.getDiscs()));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getTracks(TrackArtist artist) {
+        try {
+            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+                    .where().in(Track.COLUMN_TRACK_ARTIST, artist));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getTracks(Disc disc) {
+        try {
+            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+                    .where().in(Track.COLUMN_DISC, disc));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getTracks(Genre genre) {
+        try {
+            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+                    .where().in(Track.COLUMN_GENRE, genre));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getTracks(AlbumArtist artist) {
+        try {
+            Dao<Track, String> dao = mDatabaseHelper.getTrackDao();
+
+            // get the albums from the album artist
+            QueryBuilder<Album, String> albumsQb = mDatabaseHelper.getAlbumDao().queryBuilder();
+            Where<Album, String> inestWhere = albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, artist);
+            albumsQb.selectColumns(Album.COLUMN_UUID);
+            albumsQb.setWhere(inestWhere);
+
+            // get the discs from the albums
+            QueryBuilder<Disc, String> discsQb = mDatabaseHelper.getDiscDao().queryBuilder();
+            Where<Disc, String> innerWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
+            discsQb.selectColumns(Disc.COLUMN_UUID);
+            discsQb.setWhere(innerWhere);
+
+            // get the tracks from the discs
+            return getTracks(dao.queryBuilder()
+                    .where().in(Track.COLUMN_DISC, discsQb));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

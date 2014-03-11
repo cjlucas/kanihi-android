@@ -1,5 +1,7 @@
 package net.cjlucas.kanihi.data;
 
+import android.util.Log;
+
 import com.j256.ormlite.dao.CloseableIterator;
 
 import java.util.Map;
@@ -9,6 +11,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class AsyncQueryMonitor {
+    private static final String TAG = "AsyncQueryMonitor";
+
     private ThreadPoolExecutor mMonitors;
     private Map<Integer, CloseableIterator<?>> mIteratorMap;
     private Map<Integer, Listener<?>> mListenerMap;
@@ -40,6 +44,7 @@ public class AsyncQueryMonitor {
         if (iterator == null) {
             mMonitors.execute(new QueryMonitor<T>(token));
         } else {
+            Log.v(TAG, "iterator was complete when listener registered");
             notifyListener(token, iterator);
         }
     }
@@ -66,11 +71,15 @@ public class AsyncQueryMonitor {
 
         public void run() {
             CloseableIterator<T> iterator = null;
+            long start = System.currentTimeMillis();
             do {
                 System.err.println("running");
                iterator = (CloseableIterator<T>)mIteratorMap.get(mToken);
                sleep(SLEEP_INTERVAL_MS);
             } while (iterator == null);
+
+            double duration = (System.currentTimeMillis() - start) / 1000.0;
+            Log.v(TAG, "QueryMonitor waited for " + duration + " seconds");
 
             mIteratorMap.remove(mToken);
             notifyListener(mToken, iterator);
