@@ -1,11 +1,14 @@
 package net.cjlucas.kanihi.data.parser;
 
-import net.cjlucas.kanihi.model.*;
+import net.cjlucas.kanihi.model.Album;
+import net.cjlucas.kanihi.model.AlbumArtist;
+import net.cjlucas.kanihi.model.Disc;
+import net.cjlucas.kanihi.model.Genre;
+import net.cjlucas.kanihi.model.Track;
+import net.cjlucas.kanihi.model.TrackArtist;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
-import net.minidev.json.JSONValue;
 
-import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;

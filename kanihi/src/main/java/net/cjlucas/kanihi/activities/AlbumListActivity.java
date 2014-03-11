@@ -10,7 +10,6 @@ import android.widget.TextView;
 import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.model.Album;
-import net.cjlucas.kanihi.model.AlbumArtist;
 
 /**
  * Created by chris on 3/11/14.

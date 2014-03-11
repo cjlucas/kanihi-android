@@ -10,11 +10,10 @@ import com.j256.ormlite.dao.CloseableIterator;
 
 import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.AsyncQueryMonitor;
-import net.cjlucas.kanihi.model.Track;
 import net.cjlucas.kanihi.data.DataStore;
+import net.cjlucas.kanihi.model.Track;
 
 import java.sql.SQLException;
-import java.util.List;
 
 public class MainActivity extends Activity implements AsyncQueryMonitor.Listener<Track> {
     private static DataStore mDataStore;

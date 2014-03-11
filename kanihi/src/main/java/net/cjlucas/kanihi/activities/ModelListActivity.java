@@ -3,19 +3,13 @@ package net.cjlucas.kanihi.activities;
 import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 
-import com.j256.ormlite.android.AndroidDatabaseResults;
 import com.j256.ormlite.dao.CloseableIterator;
 
 import net.cjlucas.kanihi.data.AsyncQueryMonitor;
 import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.data.adapters.ModelAdapter;
 import net.cjlucas.kanihi.data.adapters.RowViewAdapter;
-
-import java.sql.SQLException;
 
 public abstract class ModelListActivity<E> extends ListActivity
         implements AsyncQueryMonitor.Listener<E>, RowViewAdapter<E> {

@@ -3,7 +3,6 @@ package net.cjlucas.kanihi.api;
 import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
-import com.loopj.android.http.JsonHttpResponseHandler;
 
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;

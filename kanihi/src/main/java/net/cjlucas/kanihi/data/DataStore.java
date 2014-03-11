@@ -19,7 +19,12 @@ import com.j256.ormlite.table.TableUtils;
 
 import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.parser.JsonTrackArrayParser;
-import net.cjlucas.kanihi.model.*;
+import net.cjlucas.kanihi.model.Album;
+import net.cjlucas.kanihi.model.AlbumArtist;
+import net.cjlucas.kanihi.model.Disc;
+import net.cjlucas.kanihi.model.Genre;
+import net.cjlucas.kanihi.model.Track;
+import net.cjlucas.kanihi.model.TrackArtist;
 import net.minidev.json.JSONArray;
 
 import java.sql.SQLException;

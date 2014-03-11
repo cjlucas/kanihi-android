@@ -1,17 +1,11 @@
 package net.cjlucas.kanihi.data.adapters;
 
-import android.app.Activity;
-import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.TextView;
 
 import com.j256.ormlite.android.AndroidDatabaseResults;
 import com.j256.ormlite.dao.CloseableIterator;
-
-import net.cjlucas.kanihi.activities.ModelListActivity;
-import net.cjlucas.kanihi.model.Track;
 
 import java.sql.SQLException;
 

@@ -1,6 +1,5 @@
 package net.cjlucas.kanihi.activities;
 
-import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -8,16 +7,9 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.j256.ormlite.dao.CloseableIterator;
-
 import net.cjlucas.kanihi.api.ApiHttpClient;
-import net.cjlucas.kanihi.data.AsyncQueryMonitor;
 import net.cjlucas.kanihi.data.DataStore;
-import net.cjlucas.kanihi.data.adapters.ModelAdapter;
-import net.cjlucas.kanihi.model.Album;
 import net.cjlucas.kanihi.model.AlbumArtist;
-
-import java.sql.SQLException;
 
 /**
  * Created by chris on 3/10/14.
