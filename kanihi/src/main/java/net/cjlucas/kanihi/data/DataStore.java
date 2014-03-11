@@ -190,6 +190,26 @@ public class DataStore extends Thread implements Handler.Callback {
         }
     }
 
+    public int getAlbums() {
+        try {
+            Dao<Album, ?> dao = mDatabaseHelper.getAlbumDao();
+            return mDatabaseHelper.submit(dao, dao.queryBuilder().prepare());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getAlbums(AlbumArtist artist) {
+        try {
+            Dao<Album, ?> dao = mDatabaseHelper.getAlbumDao();
+            PreparedQuery<Album> query = dao.queryBuilder()
+                    .where().eq(Album.COLUMN_ALBUM_ARTIST, artist).prepare();
+            return mDatabaseHelper.submit(dao, query);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void update() {
         mHandler.sendEmptyMessage(MessageType.UPDATE_DB.value);
     }
