@@ -30,7 +30,6 @@ public class TrackListActivity extends ModelListActivity<Track>{
         return DataStore.getInstance().getTracks();
     }
 
-    @Override
     public View getRowView(Track track, View reusableView, ViewGroup viewGroup) {
         View view = reusableView;
         if (view == null) {

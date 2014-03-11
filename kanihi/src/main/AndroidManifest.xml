@@ -10,6 +10,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity android:name="net.cjlucas.kanihi.activities.TrackListActivity" />
+        <activity android:name="net.cjlucas.kanihi.activities.AlbumListActivity" />
 
         <activity
             android:name="net.cjlucas.kanihi.activities.ArtistListActivity"

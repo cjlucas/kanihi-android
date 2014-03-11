@@ -16,13 +16,13 @@ import net.cjlucas.kanihi.model.Track;
 import java.sql.SQLException;
 
 public class ModelAdapter<E> extends BaseAdapter {
-    private ModelListActivity<E> mActivity;
+    private RowViewAdapter<E> mRowViewAdapter;
     private CloseableIterator<E> mIterator;
     private AndroidDatabaseResults mDbResults;
 
-    public ModelAdapter(ModelListActivity<E> activity, CloseableIterator<E> iterator) {
+    public ModelAdapter(RowViewAdapter<E> rowViewAdapter, CloseableIterator<E> iterator) {
         super();
-        mActivity = activity;
+        mRowViewAdapter = rowViewAdapter;
         mIterator = iterator;
         mDbResults = (AndroidDatabaseResults)mIterator.getRawResults();
     }
@@ -33,7 +33,11 @@ public class ModelAdapter<E> extends BaseAdapter {
     }
 
     @Override
-    public E getItem(int position) {
+    public Object getItem(int position) {
+        return getModel(position);
+    }
+
+    public E getModel(int position) {
         mDbResults.moveAbsolute(position);
         try {
             return mIterator.current();
@@ -49,6 +53,6 @@ public class ModelAdapter<E> extends BaseAdapter {
 
     @Override
     public View getView(int position, View view, ViewGroup viewGroup) {
-        return mActivity.getRowView(getItem(position), view, viewGroup);
+        return mRowViewAdapter.getRowView(getModel(position), view, viewGroup);
     }
 }
