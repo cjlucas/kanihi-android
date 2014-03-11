@@ -1,4 +1,4 @@
-package net.cjlucas.kanihi.activities;
+package net.cjlucas.kanihi.fragments;
 
 import android.os.Bundle;
 import android.view.View;
@@ -11,7 +11,7 @@ import net.cjlucas.kanihi.model.Track;
 /**
  * Created by chris on 3/10/14.
  */
-public class TrackListActivity extends ModelListActivity<Track>{
+public class TrackListFragment extends ModelListFragment<Track> {
     @Override
     protected void onCreate(Bundle savedInstance) {
         super.onCreate(savedInstance);

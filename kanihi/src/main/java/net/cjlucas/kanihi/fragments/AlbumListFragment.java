@@ -1,4 +1,4 @@
-package net.cjlucas.kanihi.activities;
+package net.cjlucas.kanihi.fragments;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -9,12 +9,12 @@ import android.widget.TextView;
 
 import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.DataStore;
-import net.cjlucas.kanihi.model.AlbumArtist;
+import net.cjlucas.kanihi.model.Album;
 
 /**
- * Created by chris on 3/10/14.
+ * Created by chris on 3/11/14.
  */
-public class ArtistListActivity extends ModelListActivity<AlbumArtist> {
+public class AlbumListFragment extends ModelListFragment<Album> {
 
     @Override
     protected void onCreate(Bundle savedInstance) {
@@ -28,23 +28,23 @@ public class ArtistListActivity extends ModelListActivity<AlbumArtist> {
         return DataStore.getInstance().getAlbumArtists();
     }
 
-    public View getRowView(AlbumArtist artist, View reusableView, ViewGroup viewGroup) {
+    public View getRowView(Album album, View reusableView, ViewGroup viewGroup) {
         View view = reusableView;
         if (view == null) {
             view = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, viewGroup, false);
         }
 
         TextView textView = (TextView)view.findViewById(android.R.id.text1);
-        textView.setText(artist.getName());
+        textView.setText(album.getTitle());
 
         return view;
     }
 
     @Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
-        AlbumArtist artist = (AlbumArtist)getListAdapter().getItem(position);
-        int token = DataStore.getInstance().getAlbums(artist);
-        Intent intent = new Intent(this, AlbumListActivity.class);
+        Album album = (Album)getListAdapter().getItem(position);
+        int token = DataStore.getInstance().getTracks(album);
+        Intent intent = new Intent(this, TrackListFragment.class);
         intent.putExtra("token", token);
         startActivity(intent);
     }

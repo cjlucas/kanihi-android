@@ -29,4 +29,5 @@ dependencies {
     compile files('libs/android-async-http-1.4.4.jar')
     compile files('libs/ormlite-core.jar')
     compile files('libs/ormlite-android-fork.jar')
+    compile 'com.android.support:support-v4:+'
 }
