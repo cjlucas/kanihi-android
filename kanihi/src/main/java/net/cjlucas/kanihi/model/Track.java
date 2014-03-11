@@ -40,13 +40,13 @@ public class Track {
     @DatabaseField(dataType = DataType.DATE, columnName = COLUMN_ORIGINAL_DATE)
     private Date mOriginalDate;
 
-    @DatabaseField(foreign = true, columnName = COLUMN_GENRE)
+    @DatabaseField(foreign = true, index = true, columnName = COLUMN_GENRE)
     private Genre genre;
 
-    @DatabaseField(foreign = true, columnName = COLUMN_DISC)
+    @DatabaseField(foreign = true, index = true, columnName = COLUMN_DISC)
     private Disc mDisc;
 
-    @DatabaseField(foreign = true, columnName = COLUMN_TRACK_ARTIST)
+    @DatabaseField(foreign = true, index = true, columnName = COLUMN_TRACK_ARTIST)
     private TrackArtist mTrackArtist;
 
 

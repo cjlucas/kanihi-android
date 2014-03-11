@@ -23,7 +23,7 @@ public class Disc {
     @DatabaseField(columnName = COLUMN_TOTAL_TRACKS)
     private int mTotalTracks;
 
-    @DatabaseField(foreign = true, columnName = COLUMN_ALBUM)
+    @DatabaseField(foreign = true, index = true, columnName = COLUMN_ALBUM)
     private Album mAlbum;
 
     public String getUuid() {
