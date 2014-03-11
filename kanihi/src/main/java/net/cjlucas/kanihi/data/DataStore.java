@@ -113,15 +113,6 @@ public class DataStore extends Thread implements Handler.Callback {
         }
     }
 
-    public int getTracks(Album album) {
-        try {
-            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
-                    .where().in(Track.COLUMN_DISC, album.getDiscs()));
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public int getTracks(TrackArtist artist) {
         try {
             return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
@@ -149,21 +140,37 @@ public class DataStore extends Thread implements Handler.Callback {
         }
     }
 
+    public int getTracks(Album album) {
+        try {
+            // get the discs from the album
+            QueryBuilder<Disc, String> discsQb = mDatabaseHelper.getDiscDao().queryBuilder();
+            Where<Disc, String> discsWhere = discsQb.where().eq(Disc.COLUMN_ALBUM, album);
+            discsQb.selectColumns(Disc.COLUMN_UUID);
+            discsQb.setWhere(discsWhere);
+
+            // get the tracks from the discs
+            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+                    .where().in(Track.COLUMN_DISC, discsQb));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public int getTracks(AlbumArtist artist) {
         try {
             Dao<Track, String> dao = mDatabaseHelper.getTrackDao();
 
             // get the albums from the album artist
             QueryBuilder<Album, String> albumsQb = mDatabaseHelper.getAlbumDao().queryBuilder();
-            Where<Album, String> inestWhere = albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, artist);
+            Where<Album, String> albumsWhere = albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, artist);
             albumsQb.selectColumns(Album.COLUMN_UUID);
-            albumsQb.setWhere(inestWhere);
+            albumsQb.setWhere(albumsWhere);
 
             // get the discs from the albums
             QueryBuilder<Disc, String> discsQb = mDatabaseHelper.getDiscDao().queryBuilder();
-            Where<Disc, String> innerWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
+            Where<Disc, String> discsWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
             discsQb.selectColumns(Disc.COLUMN_UUID);
-            discsQb.setWhere(innerWhere);
+            discsQb.setWhere(discsWhere);
 
             // get the tracks from the discs
             return getTracks(dao.queryBuilder()
