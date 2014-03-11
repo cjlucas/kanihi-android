@@ -10,16 +10,17 @@ import android.widget.TextView;
 import com.j256.ormlite.android.AndroidDatabaseResults;
 import com.j256.ormlite.dao.CloseableIterator;
 
+import net.cjlucas.kanihi.activities.ModelListActivity;
 import net.cjlucas.kanihi.model.Track;
 
 import java.sql.SQLException;
 
 public class ModelAdapter<E> extends BaseAdapter {
-    private Activity mActivity;
+    private ModelListActivity<E> mActivity;
     private CloseableIterator<E> mIterator;
     private AndroidDatabaseResults mDbResults;
 
-    public ModelAdapter(Activity activity, CloseableIterator<E> iterator) {
+    public ModelAdapter(ModelListActivity<E> activity, CloseableIterator<E> iterator) {
         super();
         mActivity = activity;
         mIterator = iterator;
@@ -32,7 +33,7 @@ public class ModelAdapter<E> extends BaseAdapter {
     }
 
     @Override
-    public Object getItem(int position) {
+    public E getItem(int position) {
         mDbResults.moveAbsolute(position);
         try {
             return mIterator.current();
@@ -48,12 +49,6 @@ public class ModelAdapter<E> extends BaseAdapter {
 
     @Override
     public View getView(int position, View view, ViewGroup viewGroup) {
-        if (view == null) {
-            view = mActivity.getLayoutInflater().inflate(android.R.layout.simple_list_item_1, viewGroup, false);
-        }
-
-        Track t = (Track)getItem(position);
-        ((TextView)view.findViewById(android.R.id.text1)).setText(t.getTitle());
-        return view;
+        return mActivity.getRowView(getItem(position), view, viewGroup);
     }
 }

@@ -12,6 +12,7 @@ import com.j256.ormlite.android.apptools.OrmLiteSqliteOpenHelper;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.misc.TransactionManager;
 import com.j256.ormlite.stmt.PreparedQuery;
+import com.j256.ormlite.stmt.QueryBuilder;
 import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.table.TableUtils;
 
@@ -98,6 +99,16 @@ public class DataStore extends Thread implements Handler.Callback {
         Dao<Track, ?> dao = mDatabaseHelper.getTrackDao();
         try {
             PreparedQuery<Track> query = dao.queryBuilder().prepare();
+            return mDatabaseHelper.submit(dao, query);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getAlbumArtists() {
+        Dao<AlbumArtist, ?> dao = mDatabaseHelper.getAlbumArtistDao();
+        try {
+            PreparedQuery<AlbumArtist> query = dao.queryBuilder().prepare();
             return mDatabaseHelper.submit(dao, query);
         } catch (SQLException e) {
             throw new RuntimeException(e);
