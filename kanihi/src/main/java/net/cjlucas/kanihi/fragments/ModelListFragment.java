@@ -27,12 +27,8 @@ public abstract class ModelListFragment<E> extends ListFragment
         DataStore dataStore = DataStore.setupInstance(getActivity());
 
         Bundle args = getArguments();
-        int token;
-        if (args.containsKey(ARG_TOKEN)) {
-            token = args.getInt(ARG_TOKEN);
-        } else {
-            token = executeDefaultQuery();
-        }
+        int token = args != null && args.containsKey(ARG_TOKEN)
+                ? args.getInt(ARG_TOKEN) : executeDefaultQuery();
 
         dataStore.registerQueryMonitorListener(token, this);
 
