@@ -49,16 +49,25 @@ public class AsyncQueryMonitor {
         }
     }
 
+    public void unregisterListener(int token) {
+        mListenerMap.remove(token);
+    }
+
     private <T> void notifyListener(int token, CloseableIterator<T> iterator) {
         Listener<T> listener = (Listener<T>)mListenerMap.get(token);
         if (listener != null) {
-           listener.onQueryComplete(iterator);
+            listener.onQueryComplete(iterator);
             unregisterListener(token);
         }
     }
 
-    public void unregisterListener(int token) {
-        mListenerMap.remove(token);
+    protected void closeQuery(int token) {
+        CloseableIterator iterator = mIteratorMap.get(token);
+        if (iterator != null) {
+            iterator.closeQuietly();
+            mIteratorMap.remove(iterator);
+        }
+
     }
 
     private class QueryMonitor<T> implements Runnable {
@@ -81,7 +90,6 @@ public class AsyncQueryMonitor {
             double duration = (System.currentTimeMillis() - start) / 1000.0;
             Log.v(TAG, "QueryMonitor waited for " + duration + " seconds");
 
-            mIteratorMap.remove(mToken);
             notifyListener(mToken, iterator);
         }
 
