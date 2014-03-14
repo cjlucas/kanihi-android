@@ -26,7 +26,7 @@ public abstract class ModelListFragment<E> extends ListFragment
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(android.R.layout.list_content, container, false);
+        View view = inflater.inflate(R.layout.model_list_view, container, false);
 
         DataStore dataStore = DataStore.setupInstance(getActivity());
 
