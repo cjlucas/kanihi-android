@@ -3,6 +3,8 @@ package net.cjlucas.kanihi.api;
 import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.BinaryHttpResponseHandler;
+import com.loopj.android.http.RequestHandle;
 
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
@@ -132,6 +134,19 @@ public class ApiHttpClient {
                     @Override
                     public void onFailure(int statusCode, Header[] headers, Throwable throwable, String s, JSONObject jsonObject) {
                         callback.onFailure();
+                    }
+                }
+        );
+    }
+
+    public static RequestHandle getImage(String imageId, final Callback<byte[]> callback) {
+        String url = getUrl("/images") + "/" + imageId;
+
+        return getInstance().mAsyncClient.get(null, url, new Header[0], null,
+                new BinaryHttpResponseHandler() {
+                    @Override
+                    public void onSuccess(byte[] binaryData) {
+                        callback.onSuccess(binaryData);
                     }
                 }
         );
