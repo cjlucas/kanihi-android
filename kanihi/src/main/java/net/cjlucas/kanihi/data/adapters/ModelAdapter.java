@@ -49,4 +49,9 @@ public class ModelAdapter<E> extends BaseAdapter {
     public View getView(int position, View view, ViewGroup viewGroup) {
         return mRowViewAdapter.getRowView(getModel(position), view, viewGroup);
     }
+
+    @Override
+    public boolean hasStableIds() {
+        return true;
+    }
 }

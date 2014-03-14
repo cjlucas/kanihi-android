@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 
 public class DataStore extends Thread implements Handler.Callback {
     private static final String TAG = "DataStore";
+    private static final int TRACK_LIMIT = 500;
 
     private static DataStore mSharedDataStore;
 
@@ -99,6 +100,14 @@ public class DataStore extends Thread implements Handler.Callback {
     public void registerQueryMonitorListener(int token,
                                              AsyncQueryMonitor.Listener<?> listener) {
         mQueryMonitor.registerListener(listener, token);
+    }
+
+    public void unregisterQueryMonitorListener(int token) {
+        mQueryMonitor.unregisterListener(token);
+    }
+
+    public void closeQuery(int token) {
+        mQueryMonitor.closeQuery(token);
     }
 
     private int getTracks(Where<Track, String> where) throws SQLException {
@@ -260,8 +269,8 @@ public class DataStore extends Thread implements Handler.Callback {
             @Override
             public void onSuccess(Integer totalTracks) {
                 Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
-                for (int offset = 0; offset <= totalTracks; offset += 1000) {
-                    ApiHttpClient.getTracks(offset, 1000, null, callback);
+                for (int offset = 0; offset <= totalTracks; offset += TRACK_LIMIT) {
+                    ApiHttpClient.getTracks(offset, TRACK_LIMIT, null, callback);
                 }
             }
 

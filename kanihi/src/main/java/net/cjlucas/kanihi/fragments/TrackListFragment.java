@@ -13,20 +13,15 @@ import net.cjlucas.kanihi.model.Track;
  */
 public class TrackListFragment extends ModelListFragment<Track> {
     @Override
-    protected void onCreate(Bundle savedInstance) {
-        super.onCreate(savedInstance);
-        setContentView(android.R.layout.list_content);
-    }
-
-    @Override
-    int executeDefaultQuery() {
+    public int executeDefaultQuery() {
         return DataStore.getInstance().getTracks();
     }
 
     public View getRowView(Track track, View reusableView, ViewGroup viewGroup) {
         View view = reusableView;
-        if (view == null) {
-            view = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, viewGroup, false);
+        if (view == null && getActivity() != null) {
+            view = getActivity().getLayoutInflater()
+                    .inflate(android.R.layout.simple_list_item_1, viewGroup, false);
         }
 
         TextView textView = (TextView)view.findViewById(android.R.id.text1);
