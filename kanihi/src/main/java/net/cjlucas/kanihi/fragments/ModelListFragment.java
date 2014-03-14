@@ -1,14 +1,17 @@
 package net.cjlucas.kanihi.fragments;
 
+import android.app.Activity;
 import android.app.Fragment;
 import android.app.ListActivity;
 import android.app.ListFragment;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 
 import com.j256.ormlite.dao.CloseableIterator;
 
@@ -23,6 +26,21 @@ public abstract class ModelListFragment<E> extends ListFragment
 
     public static final String ARG_TOKEN = "token";
     private int mToken;
+
+    protected static class ImageAttacher {
+        public static void attach(Activity activity,
+                                  final ImageView imageView, final Drawable drawable) {
+            if (activity != null) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        imageView.setImageDrawable(drawable);
+                    }
+                });
+            }
+        }
+    }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {

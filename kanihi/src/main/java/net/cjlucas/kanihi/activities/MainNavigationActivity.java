@@ -15,6 +15,7 @@ import android.widget.ListView;
 import net.cjlucas.kanihi.R;
 import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.DataStore;
+import net.cjlucas.kanihi.data.ImageStore;
 import net.cjlucas.kanihi.fragments.AlbumListFragment;
 import net.cjlucas.kanihi.fragments.ArtistListFragment;
 import net.cjlucas.kanihi.fragments.ModelListFragment;
@@ -35,6 +36,7 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
 
         ApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
         DataStore.setupInstance(this);
+        ImageStore.setupInstance(getApplicationContext());
 
         String[] items = {"Artists", "Albums", "Tracks"};
 
