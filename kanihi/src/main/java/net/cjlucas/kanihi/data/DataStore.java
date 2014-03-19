@@ -51,6 +51,17 @@ public class DataStore extends Thread implements Handler.Callback {
     private DatabaseHelper mDatabaseHelper;
     private AsyncQueryMonitor mQueryMonitor;
     private HashSet<Object> mModelCache;
+    private UpdateDbProgress mUpdateDbProgress;
+
+    public class UpdateDbProgress {
+        public int mCurrentTrack;
+        public int mTotalTracks;
+        public int mLoadTrackApiCallsRemaining;
+
+        private boolean hasLoadTrackApiCallsRemaining() {
+            return mLoadTrackApiCallsRemaining > 0;
+        }
+    }
 
     enum MessageType {
         UPDATE_DB(1),
@@ -269,14 +280,20 @@ public class DataStore extends Thread implements Handler.Callback {
     private void handleUpdateDb(Message message) {
         if (mModelCache == null) mModelCache = new HashSet<>(5000); // TODO: figure out when to delete this
 
+        // don't initiate another update if one is already in progress
+        if (mUpdateDbProgress != null) return;
 
+        mUpdateDbProgress = new UpdateDbProgress();
         ApiHttpClient.getTrackCount(new ApiHttpClient.Callback<Integer>() {
             @Override
             public void onSuccess(Integer totalTracks) {
                 Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
-                for (int offset = 0; offset <= totalTracks; offset += TRACK_LIMIT) {
-                    Log.d(TAG, String.format(Locale.getDefault(), "offset: %d, limit: %d", offset, TRACK_LIMIT));
-                    ApiHttpClient.getTracks(offset, TRACK_LIMIT, null, TRACK_DATA_CALLBACK);
+                mUpdateDbProgress.mTotalTracks = totalTracks;
+                mUpdateDbProgress.mLoadTrackApiCallsRemaining =
+                        (int)Math.ceil((totalTracks * 1.0) / TRACK_LIMIT);
+
+                if (mUpdateDbProgress.hasLoadTrackApiCallsRemaining()) {
+                    loadTracks();
                 }
             }
 
@@ -285,6 +302,16 @@ public class DataStore extends Thread implements Handler.Callback {
                 Log.e(TAG, "getTrackCount failed");
             }
         });
+    }
+
+    private void loadTracks() {
+        if (mUpdateDbProgress == null) throw new RuntimeException();
+
+        if (!mUpdateDbProgress.hasLoadTrackApiCallsRemaining()) return;
+
+        Log.d(TAG, String.format(Locale.getDefault(), "offset: %d, limit: %d", mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT));
+        ApiHttpClient.getTracks(mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT, null, TRACK_DATA_CALLBACK);
+        mUpdateDbProgress.mLoadTrackApiCallsRemaining--;
     }
 
     private <T> boolean isInCache(T object) {
@@ -303,6 +330,7 @@ public class DataStore extends Thread implements Handler.Callback {
             @Override
             public Void call() throws Exception {
                 for (Track track : tracks) {
+                    mUpdateDbProgress.mCurrentTrack++;
                     Genre genre = track.getGenre();
                     if (genre != null && !isInCache(genre.getUuid())) {
                         mDatabaseHelper.createOrUpdate(mDatabaseHelper.getGenreDao(), genre);
@@ -348,6 +376,12 @@ public class DataStore extends Thread implements Handler.Callback {
 
                 tracks.clear();
                 trackImages.clear();
+
+                if (mUpdateDbProgress.hasLoadTrackApiCallsRemaining()) {
+                    loadTracks();
+                } else {
+                    // send loop messages for cleanup
+                }
                 return null;
             }
         });
