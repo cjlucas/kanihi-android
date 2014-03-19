@@ -7,7 +7,7 @@ import com.j256.ormlite.table.DatabaseTable;
 public class Image {
     public static final String COLUMN_ID = "id";
 
-    @DatabaseField(id = true, columnName = "mId")
+    @DatabaseField(id = true, columnName = COLUMN_ID)
     private String mId;
 
     public String getId() {

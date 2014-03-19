@@ -9,6 +9,7 @@ import android.os.Message;
 import android.util.Log;
 
 import com.j256.ormlite.android.apptools.OrmLiteSqliteOpenHelper;
+import com.j256.ormlite.dao.CloseableIterator;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.misc.TransactionManager;
 import com.j256.ormlite.stmt.PreparedQuery;
@@ -30,6 +31,7 @@ import net.cjlucas.kanihi.model.TrackImage;
 import net.minidev.json.JSONArray;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +39,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -65,7 +68,8 @@ public class DataStore extends Thread implements Handler.Callback {
 
     enum MessageType {
         UPDATE_DB(1),
-        TRACK_DATA_RECEIVED(1 << 1);
+        TRACK_DATA_RECEIVED(1 << 1),
+        ASSOCIATE_IMAGES(1 << 2);
 
         public static MessageType forValue(int value) {
             for (MessageType type : MessageType.values()) {
@@ -125,26 +129,30 @@ public class DataStore extends Thread implements Handler.Callback {
         mQueryMonitor.closeQuery(token);
     }
 
-    private int getTracks(Where<Track, String> where) throws SQLException {
-        Dao<Track, String> dao = mDatabaseHelper.getTrackDao();
-        QueryBuilder<Track, String> qb = dao.queryBuilder();
-        qb.setWhere(where);
-        return mDatabaseHelper.submit(dao, qb.prepare());
-    }
+    private PreparedQuery<Track> tracksQuery(Where<Track, String> where,
+                                             String orderColumn, boolean ascending) {
+        QueryBuilder<Track, String> qb = mDatabaseHelper.dao(Track.class).queryBuilder();
+        if (where != null) qb.setWhere(where);
+        qb.orderBy(orderColumn, ascending);
 
-    public int getTracks() {
         try {
-            Dao<Track, ?> dao = mDatabaseHelper.getTrackDao();
-            PreparedQuery<Track> query = dao.queryBuilder().prepare();
-            return mDatabaseHelper.submit(dao, query);
+            return qb.prepare();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
+    private int getTracks(Where<Track, String> where) throws SQLException {
+        return mDatabaseHelper.submit(Track.class, tracksQuery(where, Track.COLUMN_TITLE, true));
+    }
+
+    public int getTracks() {
+        return mDatabaseHelper.submit(Track.class, tracksQuery(null, Track.COLUMN_TITLE, true));
+    }
+
     public int getTracks(TrackArtist artist) {
         try {
-            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+            return getTracks(mDatabaseHelper.dao(Track.class).queryBuilder()
                     .where().in(Track.COLUMN_TRACK_ARTIST, artist));
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -153,7 +161,7 @@ public class DataStore extends Thread implements Handler.Callback {
 
     public int getTracks(Disc disc) {
         try {
-            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+            return getTracks(mDatabaseHelper.dao(Track.class).queryBuilder()
                     .where().in(Track.COLUMN_DISC, disc));
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -162,7 +170,7 @@ public class DataStore extends Thread implements Handler.Callback {
 
     public int getTracks(Genre genre) {
         try {
-            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+            return getTracks(mDatabaseHelper.dao(Track.class).queryBuilder()
                     .where().in(Track.COLUMN_GENRE, genre));
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -172,14 +180,37 @@ public class DataStore extends Thread implements Handler.Callback {
     public int getTracks(Album album) {
         try {
             // get the discs from the album
-            QueryBuilder<Disc, String> discsQb = mDatabaseHelper.getDiscDao().queryBuilder();
+            QueryBuilder<Disc, String> discsQb = mDatabaseHelper.dao(Disc.class).queryBuilder();
             Where<Disc, String> discsWhere = discsQb.where().eq(Disc.COLUMN_ALBUM, album);
             discsQb.selectColumns(Disc.COLUMN_UUID);
             discsQb.setWhere(discsWhere);
 
             // get the tracks from the discs
-            return getTracks(mDatabaseHelper.getTrackDao().queryBuilder()
+            return getTracks(mDatabaseHelper.dao(Track.class).queryBuilder()
                     .where().in(Track.COLUMN_DISC, discsQb));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private Where<Track, String> tracksWhere(AlbumArtist artist) throws SQLException {
+        try {
+            Dao<Track, String> dao = mDatabaseHelper.dao(Track.class);
+
+            // get the albums from the album artist
+            QueryBuilder<Album, String> albumsQb = mDatabaseHelper.dao(Album.class).queryBuilder();
+            Where<Album, String> albumsWhere = albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, artist);
+            albumsQb.selectColumns(Album.COLUMN_UUID);
+            albumsQb.setWhere(albumsWhere);
+
+            // get the discs from the albums
+            QueryBuilder<Disc, String> discsQb = mDatabaseHelper.dao(Disc.class).queryBuilder();
+            Where<Disc, String> discsWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
+            discsQb.selectColumns(Disc.COLUMN_UUID);
+            discsQb.setWhere(discsWhere);
+
+            // get the tracks from the discs
+            return dao.queryBuilder().where().in(Track.COLUMN_DISC, discsQb);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -187,30 +218,23 @@ public class DataStore extends Thread implements Handler.Callback {
 
     public int getTracks(AlbumArtist artist) {
         try {
-            Dao<Track, String> dao = mDatabaseHelper.getTrackDao();
+            return getTracks(tracksWhere(artist));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-            // get the albums from the album artist
-            QueryBuilder<Album, String> albumsQb = mDatabaseHelper.getAlbumDao().queryBuilder();
-            Where<Album, String> albumsWhere = albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, artist);
-            albumsQb.selectColumns(Album.COLUMN_UUID);
-            albumsQb.setWhere(albumsWhere);
-
-            // get the discs from the albums
-            QueryBuilder<Disc, String> discsQb = mDatabaseHelper.getDiscDao().queryBuilder();
-            Where<Disc, String> discsWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
-            discsQb.selectColumns(Disc.COLUMN_UUID);
-            discsQb.setWhere(discsWhere);
-
-            // get the tracks from the discs
-            return getTracks(dao.queryBuilder()
-                    .where().in(Track.COLUMN_DISC, discsQb));
+    private List<Track> getTracksSync(AlbumArtist artist) {
+        try {
+            return mDatabaseHelper.dao(Track.class)
+                    .query(tracksQuery(tracksWhere(artist), Track.COLUMN_TITLE, true));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
     public int getAlbumArtists() {
-        Dao<AlbumArtist, ?> dao = mDatabaseHelper.getAlbumArtistDao();
+        Dao<AlbumArtist, ?> dao = mDatabaseHelper.dao(AlbumArtist.class);
         try {
             PreparedQuery<AlbumArtist> query = dao.queryBuilder().prepare();
             return mDatabaseHelper.submit(dao, query);
@@ -221,7 +245,7 @@ public class DataStore extends Thread implements Handler.Callback {
 
     public int getAlbums() {
         try {
-            Dao<Album, ?> dao = mDatabaseHelper.getAlbumDao();
+            Dao<Album, ?> dao = mDatabaseHelper.dao(Album.class);
             return mDatabaseHelper.submit(dao, dao.queryBuilder().prepare());
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -230,7 +254,7 @@ public class DataStore extends Thread implements Handler.Callback {
 
     public int getAlbums(AlbumArtist artist) {
         try {
-            Dao<Album, ?> dao = mDatabaseHelper.getAlbumDao();
+            Dao<Album, ?> dao = mDatabaseHelper.dao(Album.class);
             PreparedQuery<Album> query = dao.queryBuilder()
                     .where().eq(Album.COLUMN_ALBUM_ARTIST, artist).prepare();
             return mDatabaseHelper.submit(dao, query);
@@ -256,6 +280,9 @@ public class DataStore extends Thread implements Handler.Callback {
                 break;
             case TRACK_DATA_RECEIVED:
                 handleTrackDataReceived(message);
+                break;
+            case ASSOCIATE_IMAGES:
+                handleAssociateImages(message);
                 break;
             default:
                 throw new RuntimeException("Unknown message received: " + message);
@@ -333,44 +360,41 @@ public class DataStore extends Thread implements Handler.Callback {
                     mUpdateDbProgress.mCurrentTrack++;
                     Genre genre = track.getGenre();
                     if (genre != null && !isInCache(genre.getUuid())) {
-                        mDatabaseHelper.createOrUpdate(mDatabaseHelper.getGenreDao(), genre);
+                        mDatabaseHelper.createOrUpdate(Genre.class, genre);
                     }
 
                     TrackArtist trackArtist = track.getTrackArtist();
                     if (trackArtist != null && !isInCache(trackArtist.getUuid())) {
-                        mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackArtistDao(), trackArtist);
+                        mDatabaseHelper.createOrUpdate(TrackArtist.class, trackArtist);
                     }
 
                     Disc disc = track.getDisc();
                     if (disc != null && !isInCache(disc.getUuid())) {
-                        mDatabaseHelper.createOrUpdate(mDatabaseHelper.getDiscDao(), disc);
+                        mDatabaseHelper.createOrUpdate(Disc.class, disc);
 
                         Album album = disc.getAlbum();
                         if (album != null && !isInCache(album.getUuid())) {
-                            mDatabaseHelper.createOrUpdate(mDatabaseHelper.getAlbumDao(), album);
+                            mDatabaseHelper.createOrUpdate(Album.class, album);
 
                             AlbumArtist albumArtist = album.getAlbumArtist();
                             if (albumArtist != null && !isInCache(albumArtist.getUuid())) {
-                                mDatabaseHelper.createOrUpdate(mDatabaseHelper.getAlbumArtistDao(), albumArtist);
+                                mDatabaseHelper.createOrUpdate(AlbumArtist.class, albumArtist);
                             }
                         }
                     }
 
-                    mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
+                    mDatabaseHelper.createOrUpdate(Track.class, track);
 //                    mDatabaseHelper.getTrackDao().create(track);
                 }
 
-                Dao<Image, String> imageDao = mDatabaseHelper.getImageDao();
-                Dao<TrackImage, String> trackImageDao = mDatabaseHelper.getTrackImageDao();
-
                 for (String trackId : trackImages.keySet()) {
                     for (Image image : trackImages.get(trackId)) {
-                        mDatabaseHelper.createOrUpdate(imageDao, image);
+                        mDatabaseHelper.createOrUpdate(Image.class, image);
 
                         TrackImage trackImage = new TrackImage();
                         trackImage.setTrackId(trackId);
                         trackImage.setImageId(image.getId());
-                        mDatabaseHelper.createOrUpdate(trackImageDao, trackImage);
+                        mDatabaseHelper.createOrUpdate(TrackImage.class, trackImage);
                     }
                 }
 
@@ -381,28 +405,66 @@ public class DataStore extends Thread implements Handler.Callback {
                     loadTracks();
                 } else {
                     // send loop messages for cleanup
+                    mHandler.sendEmptyMessage(MessageType.ASSOCIATE_IMAGES.value);
                 }
                 return null;
             }
         });
     }
 
+    private List<Image> getImages(Iterable<Track> tracks) {
+        ArrayList<String> trackIds = new ArrayList<>();
+        for (Track track : tracks) trackIds.add(track.getUuid());
+
+        try {
+            QueryBuilder<TrackImage, String> trackImageQb = mDatabaseHelper.dao(TrackImage.class)
+                    .queryBuilder();
+            trackImageQb.setWhere(trackImageQb.where().in(TrackImage.COLUMN_TRACK_ID, trackIds));
+            trackImageQb.selectColumns(TrackImage.COLUMN_IMAGE_ID);
+
+            return mDatabaseHelper.dao(Image.class).queryBuilder()
+                    .where().in(Image.COLUMN_ID, trackImageQb).query();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void handleAssociateImages(Message message) {
+        Log.v(TAG, "handleAssociateImages");
+        try {
+            PreparedQuery<AlbumArtist> query = mDatabaseHelper.dao(AlbumArtist.class)
+                    .queryBuilder().where().isNull(AlbumArtist.COLUMN_IMAGE).prepare();
+            CloseableIterator<AlbumArtist> artists = mDatabaseHelper.dao(AlbumArtist.class).iterator(query);
+
+            while (artists.current() != null) {
+                AlbumArtist artist = artists.current();
+                Log.v(TAG, artist.getName());
+                List<Track> tracks = getTracksSync(artist);
+
+                List<Image> images = getImages(tracks);
+                if (images.size() > 0) {
+                    artist.setImage(images.get(0));
+                    mDatabaseHelper.dao(AlbumArtist.class).update(artist);
+                }
+
+                artists.nextThrow();
+            }
+
+            artists.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private class DatabaseHelper extends OrmLiteSqliteOpenHelper {
-        private Dao<Track, String> mTrackDao;
-        private Dao<Genre, String> mGenreDao;
-        private Dao<Disc, String> mDiscDao;
-        private Dao<Album, String> mAlbumDao;
-        private Dao<TrackArtist, String> mTrackArtistDao;
-        private Dao<AlbumArtist, String> mAlbumArtistDao;
-        private Dao<Image, String> mImageDao;
-        private Dao<TrackImage, String> mTrackImageDao;
+        private Map<Class, Dao> mDaoMap;
         private ThreadPoolExecutor mExecutor;
-        private int createOrUpdateCount;
 
         public DatabaseHelper(Context context) {
             super(context, "kanihi.sqlite", null, 1);
             setWriteAheadLoggingEnabled(true);
 
+            mDaoMap = new ConcurrentHashMap<>();
             mExecutor = new ThreadPoolExecutor(
                     4, 10, 5, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(20));
         }
@@ -452,100 +514,37 @@ public class DataStore extends Thread implements Handler.Callback {
             return token;
         }
 
+        public <T> int submit(Class<T> clazz, PreparedQuery<T> query) {
+            return submit(dao(clazz), query);
+        }
+
         public <V> void transaction(final Callable<V> callable) {
             try {
                 long start = System.currentTimeMillis();
                 TransactionManager.callInTransaction(getConnectionSource(), callable);
                 long duration = System.currentTimeMillis() - start;
                 Log.i(TAG, "Transaction took " + (duration / 1000.0) + " seconds");
-                Log.i(TAG, "createOrUpdateCount: " + createOrUpdateCount);
             } catch (SQLException e) {
                 Log.e(TAG, "caught SQLException", e);
             }
         }
 
-        private <T> Dao<T, String> getDaoCatch(Class<T> clazz) {
-            try {
-                return getDao(clazz);
-            } catch (SQLException e) {
-                Log.e(TAG, "Could not create DAO for " + clazz.getName());
-                throw new RuntimeException(e);
-            }
+        public <T> void createOrUpdate(Class<T> clazz, T object) throws SQLException {
+            dao(clazz).createOrUpdate(object);
         }
 
         @SuppressWarnings("unchecked")
-        public void createOrUpdate(Dao dao, Object o) {
-            createOrUpdateCount++;
+        public synchronized <T> Dao<T, String> dao(Class<T> clazz) {
+            if (mDaoMap.containsKey(clazz)) {
+                return mDaoMap.get(clazz);
+            }
+
             try {
-                dao.createOrUpdate(o);
+                mDaoMap.put(clazz, getDao(clazz));
+                return mDaoMap.get(clazz);
             } catch (SQLException e) {
-                Log.e(TAG, "error with createOrUpdate");
                 throw new RuntimeException(e);
             }
-        }
-
-        public synchronized Dao<Track, String> getTrackDao() {
-            if (mTrackDao == null) {
-                mTrackDao = getDaoCatch(Track.class);
-            }
-
-            return mTrackDao;
-        }
-
-        public synchronized Dao<Genre, String> getGenreDao() {
-            if (mGenreDao == null) {
-                mGenreDao = getDaoCatch(Genre.class);
-            }
-
-            return mGenreDao;
-        }
-
-        public synchronized Dao<Disc, String> getDiscDao() {
-            if (mDiscDao == null) {
-                mDiscDao = getDaoCatch(Disc.class);
-            }
-
-            return mDiscDao;
-        }
-
-        public synchronized Dao<Album, String> getAlbumDao() {
-            if (mAlbumDao == null) {
-                mAlbumDao = getDaoCatch(Album.class);
-            }
-
-            return mAlbumDao;
-        }
-
-        public synchronized Dao<TrackArtist, String> getTrackArtistDao() {
-            if (mTrackArtistDao == null) {
-                mTrackArtistDao = getDaoCatch(TrackArtist.class);
-            }
-
-            return mTrackArtistDao;
-        }
-
-        public synchronized Dao<AlbumArtist, String> getAlbumArtistDao() {
-            if (mAlbumArtistDao == null) {
-                mAlbumArtistDao = getDaoCatch(AlbumArtist.class);
-            }
-
-            return mAlbumArtistDao;
-        }
-
-        public synchronized Dao<Image, String> getImageDao() {
-            if (mImageDao == null) {
-                mImageDao = getDaoCatch(Image.class);
-            }
-
-            return mImageDao;
-        }
-
-        public synchronized Dao<TrackImage, String> getTrackImageDao() {
-            if (mTrackImageDao == null) {
-                mTrackImageDao = getDaoCatch(TrackImage.class);
-            }
-
-            return mTrackImageDao;
         }
     }
 }

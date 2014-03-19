@@ -38,14 +38,15 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
         textView.setText(artist.getName());
 
         ImageView imageView = (ImageView)view.findViewById(R.id.image_view);
-        Image image = new Image();
-        image.setId("99");
-        ImageStore.loadImage(image, imageView, new ImageStore.Callback() {
-            @Override
-            public void onImageAvailable(final ImageView imageView, final Drawable drawable) {
-                ImageAttacher.attach(getActivity(), imageView, drawable);
-            }
-        });
+        Image image = artist.getImage();
+        if (image != null) {
+            ImageStore.loadImage(image, imageView, new ImageStore.Callback() {
+                @Override
+                public void onImageAvailable(final ImageView imageView, final Drawable drawable) {
+                    ImageAttacher.attach(getActivity(), imageView, drawable);
+                }
+            });
+        }
 
         return view;
     }
