@@ -10,6 +10,7 @@ public class AlbumArtist {
     public static final String COLUMN_UUID = "uuid";
     public static final String COLUMN_NAME = "name";
     public static final String COLUMN_SORT_NAME = "sort_name";
+    public static final String COLUMN_IMAGE = "image";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -19,6 +20,9 @@ public class AlbumArtist {
 
     @DatabaseField(columnName = COLUMN_SORT_NAME)
     private String mSortName;
+
+    @DatabaseField(foreign = true, columnName = COLUMN_IMAGE)
+    private Image mImage;
 
     @ForeignCollectionField
     private ForeignCollection<Album> mAlbums;
@@ -49,5 +53,13 @@ public class AlbumArtist {
 
     public ForeignCollection<Album> getAlbums() {
         return mAlbums;
+    }
+
+    public Image getImage() {
+        return mImage;
+    }
+
+    public void setImage(Image image) {
+        mImage = image;
     }
 }

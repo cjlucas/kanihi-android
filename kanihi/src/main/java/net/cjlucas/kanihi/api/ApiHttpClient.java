@@ -3,11 +3,13 @@ package net.cjlucas.kanihi.api;
 import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.BinaryHttpResponseHandler;
 import com.loopj.android.http.RequestHandle;
 
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
+import net.minidev.json.JSONValue;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -23,6 +25,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class ApiHttpClient {
+    private static final String TAG = "ApiHttpClient";
+
     private static ApiHttpClient mApiClient;
     private AsyncHttpClient mAsyncClient;
     private String mApiHost;
@@ -79,7 +83,6 @@ public class ApiHttpClient {
         getInstance().mAsyncClient.get(null, getUrl("/tracks.json"), headers, null,
                 new JsonArrayHttpResponseHandler() {
                     public void onSuccess(int i, Header[] headers, String s, JSONArray objects) {
-                        Log.e("hi", "got a response");
                         callback.onSuccess(objects);
                     }
                     public void onFailure(int statusCode, Header[] headers, Throwable e,

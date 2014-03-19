@@ -23,13 +23,17 @@ import net.cjlucas.kanihi.model.Album;
 import net.cjlucas.kanihi.model.AlbumArtist;
 import net.cjlucas.kanihi.model.Disc;
 import net.cjlucas.kanihi.model.Genre;
+import net.cjlucas.kanihi.model.Image;
 import net.cjlucas.kanihi.model.Track;
 import net.cjlucas.kanihi.model.TrackArtist;
+import net.cjlucas.kanihi.model.TrackImage;
 import net.minidev.json.JSONArray;
 
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
@@ -248,29 +252,31 @@ public class DataStore extends Thread implements Handler.Callback {
         return true;
     }
 
+    private final ApiHttpClient.Callback<JSONArray> TRACK_DATA_CALLBACK = new ApiHttpClient.Callback<JSONArray>() {
+        @Override
+        public void onSuccess(JSONArray data) {
+            Log.v(TAG, "received data of size " + data.size());
+            Message msg = mHandler.obtainMessage(MessageType.TRACK_DATA_RECEIVED.value);
+            msg.obj = data;
+            mHandler.sendMessage(msg);
+        }
+        @Override
+        public void onFailure() {
+            Log.e(TAG, "failure with ApiHttpClient.getTracks");
+        }
+    };
+
     private void handleUpdateDb(Message message) {
         if (mModelCache == null) mModelCache = new HashSet<>(5000); // TODO: figure out when to delete this
 
-        final ApiHttpClient.Callback<JSONArray> callback = new ApiHttpClient.Callback<JSONArray>() {
-            @Override
-            public void onSuccess(JSONArray data) {
-                Log.v(TAG, "received data of size " + data.size());
-                Message msg = mHandler.obtainMessage(MessageType.TRACK_DATA_RECEIVED.value);
-                msg.obj = data;
-                mHandler.sendMessage(msg);
-            }
-            @Override
-            public void onFailure() {
-                Log.e(TAG, "failure with ApiHttpClient.getTracks");
-            }
-        };
 
         ApiHttpClient.getTrackCount(new ApiHttpClient.Callback<Integer>() {
             @Override
             public void onSuccess(Integer totalTracks) {
                 Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
                 for (int offset = 0; offset <= totalTracks; offset += TRACK_LIMIT) {
-                    ApiHttpClient.getTracks(offset, TRACK_LIMIT, null, callback);
+                    Log.d(TAG, String.format(Locale.getDefault(), "offset: %d, limit: %d", offset, TRACK_LIMIT));
+                    ApiHttpClient.getTracks(offset, TRACK_LIMIT, null, TRACK_DATA_CALLBACK);
                 }
             }
 
@@ -279,7 +285,6 @@ public class DataStore extends Thread implements Handler.Callback {
                 Log.e(TAG, "getTrackCount failed");
             }
         });
-
     }
 
     private <T> boolean isInCache(T object) {
@@ -293,9 +298,10 @@ public class DataStore extends Thread implements Handler.Callback {
         JSONArray data = (JSONArray)message.obj;
 
         final List<Track> tracks = JsonTrackArrayParser.getTracks(data);
+        final Map<String, List<Image>> trackImages = JsonTrackArrayParser.getTrackImages(data);
         mDatabaseHelper.transaction(new Callable<Void>(){
             @Override
-            public Void call() throws Exception{
+            public Void call() throws Exception {
                 for (Track track : tracks) {
                     Genre genre = track.getGenre();
                     if (genre != null && !isInCache(genre.getUuid())) {
@@ -322,10 +328,26 @@ public class DataStore extends Thread implements Handler.Callback {
                         }
                     }
 
-//                    mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
-                    mDatabaseHelper.getTrackDao().create(track);
+                    mDatabaseHelper.createOrUpdate(mDatabaseHelper.getTrackDao(), track);
+//                    mDatabaseHelper.getTrackDao().create(track);
                 }
+
+                Dao<Image, String> imageDao = mDatabaseHelper.getImageDao();
+                Dao<TrackImage, String> trackImageDao = mDatabaseHelper.getTrackImageDao();
+
+                for (String trackId : trackImages.keySet()) {
+                    for (Image image : trackImages.get(trackId)) {
+                        mDatabaseHelper.createOrUpdate(imageDao, image);
+
+                        TrackImage trackImage = new TrackImage();
+                        trackImage.setTrackId(trackId);
+                        trackImage.setImageId(image.getId());
+                        mDatabaseHelper.createOrUpdate(trackImageDao, trackImage);
+                    }
+                }
+
                 tracks.clear();
+                trackImages.clear();
                 return null;
             }
         });
@@ -338,6 +360,8 @@ public class DataStore extends Thread implements Handler.Callback {
         private Dao<Album, String> mAlbumDao;
         private Dao<TrackArtist, String> mTrackArtistDao;
         private Dao<AlbumArtist, String> mAlbumArtistDao;
+        private Dao<Image, String> mImageDao;
+        private Dao<TrackImage, String> mTrackImageDao;
         private ThreadPoolExecutor mExecutor;
         private int createOrUpdateCount;
 
@@ -359,6 +383,8 @@ public class DataStore extends Thread implements Handler.Callback {
                 TableUtils.createTable(connectionSource, Album.class);
                 TableUtils.createTable(connectionSource, TrackArtist.class);
                 TableUtils.createTable(connectionSource, AlbumArtist.class);
+                TableUtils.createTable(connectionSource, Image.class);
+                TableUtils.createTable(connectionSource, TrackImage.class);
 
             } catch (SQLException e) {
                 Log.e(TAG, "Couldn't create table");
@@ -476,6 +502,24 @@ public class DataStore extends Thread implements Handler.Callback {
             }
 
             return mAlbumArtistDao;
+        }
+
+        @SuppressWarnings("unchecked")
+        public synchronized Dao<Image, String> getImageDao() {
+            if (mImageDao == null) {
+                mImageDao = (Dao<Image, String>)getDaoCatch(Image.class);
+            }
+
+            return mImageDao;
+        }
+
+        @SuppressWarnings("unchecked")
+        public synchronized Dao<TrackImage, String> getTrackImageDao() {
+            if (mTrackImageDao == null) {
+                mTrackImageDao = (Dao<TrackImage, String>)getDaoCatch(TrackImage.class);
+            }
+
+            return mTrackImageDao;
         }
     }
 }
