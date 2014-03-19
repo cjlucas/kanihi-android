@@ -464,7 +464,7 @@ public class DataStore extends Thread implements Handler.Callback {
             }
         }
 
-        private Dao<?, ?> getDaoCatch(Class clazz) {
+        private <T> Dao<T, String> getDaoCatch(Class<T> clazz) {
             try {
                 return getDao(clazz);
             } catch (SQLException e) {
@@ -484,73 +484,65 @@ public class DataStore extends Thread implements Handler.Callback {
             }
         }
 
-        @SuppressWarnings("unchecked")
         public synchronized Dao<Track, String> getTrackDao() {
             if (mTrackDao == null) {
-                mTrackDao = (Dao<Track, String>)getDaoCatch(Track.class);
+                mTrackDao = getDaoCatch(Track.class);
             }
 
             return mTrackDao;
         }
 
-        @SuppressWarnings("unchecked")
         public synchronized Dao<Genre, String> getGenreDao() {
             if (mGenreDao == null) {
-                mGenreDao = (Dao<Genre, String>)getDaoCatch(Genre.class);
+                mGenreDao = getDaoCatch(Genre.class);
             }
 
             return mGenreDao;
         }
 
-        @SuppressWarnings("unchecked")
         public synchronized Dao<Disc, String> getDiscDao() {
             if (mDiscDao == null) {
-                mDiscDao = (Dao<Disc, String>)getDaoCatch(Disc.class);
+                mDiscDao = getDaoCatch(Disc.class);
             }
 
             return mDiscDao;
         }
 
-        @SuppressWarnings("unchecked")
         public synchronized Dao<Album, String> getAlbumDao() {
             if (mAlbumDao == null) {
-                mAlbumDao = (Dao<Album, String>)getDaoCatch(Album.class);
+                mAlbumDao = getDaoCatch(Album.class);
             }
 
             return mAlbumDao;
         }
 
-        @SuppressWarnings("unchecked")
         public synchronized Dao<TrackArtist, String> getTrackArtistDao() {
             if (mTrackArtistDao == null) {
-                mTrackArtistDao = (Dao<TrackArtist, String>)getDaoCatch(TrackArtist.class);
+                mTrackArtistDao = getDaoCatch(TrackArtist.class);
             }
 
             return mTrackArtistDao;
         }
 
-        @SuppressWarnings("unchecked")
         public synchronized Dao<AlbumArtist, String> getAlbumArtistDao() {
             if (mAlbumArtistDao == null) {
-                mAlbumArtistDao = (Dao<AlbumArtist, String>)getDaoCatch(AlbumArtist.class);
+                mAlbumArtistDao = getDaoCatch(AlbumArtist.class);
             }
 
             return mAlbumArtistDao;
         }
 
-        @SuppressWarnings("unchecked")
         public synchronized Dao<Image, String> getImageDao() {
             if (mImageDao == null) {
-                mImageDao = (Dao<Image, String>)getDaoCatch(Image.class);
+                mImageDao = getDaoCatch(Image.class);
             }
 
             return mImageDao;
         }
 
-        @SuppressWarnings("unchecked")
         public synchronized Dao<TrackImage, String> getTrackImageDao() {
             if (mTrackImageDao == null) {
-                mTrackImageDao = (Dao<TrackImage, String>)getDaoCatch(TrackImage.class);
+                mTrackImageDao = getDaoCatch(TrackImage.class);
             }
 
             return mTrackImageDao;
