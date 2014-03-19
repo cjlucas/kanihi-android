@@ -4,8 +4,10 @@ import net.cjlucas.kanihi.model.Album;
 import net.cjlucas.kanihi.model.AlbumArtist;
 import net.cjlucas.kanihi.model.Disc;
 import net.cjlucas.kanihi.model.Genre;
+import net.cjlucas.kanihi.model.Image;
 import net.cjlucas.kanihi.model.Track;
 import net.cjlucas.kanihi.model.TrackArtist;
+import net.cjlucas.kanihi.model.TrackImage;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
@@ -13,7 +15,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class JsonTrackArrayParser {
     private static final String KEY_TRACK = "track";
@@ -22,6 +26,7 @@ public class JsonTrackArrayParser {
     private static final String KEY_ALBUM = "album";
     private static final String KEY_TRACK_ARTIST = "track_artist";
     private static final String KEY_ALBUM_ARTIST = "album_artist";
+    private static final String KEY_IMAGES = "images";
 
     private static abstract class JsonModelParser {
         private static final SimpleDateFormat mDateFormatter
@@ -176,6 +181,16 @@ public class JsonTrackArrayParser {
         }
     }
 
+    public static class JsonImageParser extends JsonModelParser {
+        private static final String KEY_CHECKSUM = "checksum";
+
+        public static Image parse(JSONObject jsonObject) {
+            Image image = new Image();
+            image.setId(getString(jsonObject, KEY_CHECKSUM));
+
+            return image;
+        }
+    }
 
     public static List<Track> getTracks(JSONArray jsonArray) {
         ArrayList<Track> tracks = new ArrayList<>();
@@ -188,4 +203,23 @@ public class JsonTrackArrayParser {
         return tracks;
     }
 
+    public static Map<String, List<Image>> getTrackImages(JSONArray jsonArray) {
+        Map<String, List<Image>> imagesMap = new HashMap<>();
+
+        for (Object o : jsonArray) {
+            ArrayList<Image> images = new ArrayList<>();
+
+            Object trackJsonObject = ((JSONObject)o).get(KEY_TRACK);
+            Track t = JsonTrackParser.parse((JSONObject)trackJsonObject);
+
+            Object trackImagesJsonArray = ((JSONObject)trackJsonObject).get(KEY_IMAGES);
+            for (Object imageJsonObject : (JSONArray)trackImagesJsonArray) {
+                images.add(JsonImageParser.parse((JSONObject) imageJsonObject));
+            }
+
+            imagesMap.put(t.getUuid(), images);
+        }
+
+        return imagesMap;
+    }
 }
