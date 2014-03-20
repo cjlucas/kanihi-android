@@ -6,11 +6,12 @@ import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 
 @DatabaseTable(tableName = "albums")
-public class Album {
+public class Album implements ImageRepresentation {
     public static final String COLUMN_UUID = "uuid";
     public static final String COLUMN_TITLE = "title";
     public static final String COLUMN_TOTAL_DISCS = "total_discs";
     public static final String COLUMN_ALBUM_ARTIST = "album_artist_id";
+    public static final String COLUMN_IMAGE = "image";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -23,6 +24,9 @@ public class Album {
 
     @DatabaseField(foreign = true, index = true, columnName = COLUMN_ALBUM_ARTIST)
     private AlbumArtist mAlbumArtist;
+
+    @DatabaseField(foreign = true, columnName = COLUMN_IMAGE)
+    private Image mImage;
 
     @ForeignCollectionField
     private ForeignCollection<Disc> mDiscs;
@@ -61,5 +65,13 @@ public class Album {
 
     public ForeignCollection<Disc> getDiscs() {
         return mDiscs;
+    }
+
+    public Image getImage() {
+        return mImage;
+    }
+
+    public void setImage(Image image) {
+        mImage = image;
     }
 }

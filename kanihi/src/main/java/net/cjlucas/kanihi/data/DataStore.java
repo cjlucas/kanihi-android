@@ -397,13 +397,15 @@ public class DataStore extends Thread implements Handler.Callback {
         Log.v(TAG, "handleAssociateImages");
         Map<Class, String> classColumnMap = new HashMap<>();
         classColumnMap.put(AlbumArtist.class, AlbumArtist.COLUMN_IMAGE);
+        classColumnMap.put(Album.class, Album.COLUMN_IMAGE);
 
         for (Class clazz : classColumnMap.keySet()) {
             fillMissingAssociatedImages(clazz, classColumnMap.get(clazz));
         }
     }
 
-    private <T extends ImageRepresentation> void fillMissingAssociatedImages(final Class<T> clazz, final String nullColumn) {
+    private <T extends ImageRepresentation> void fillMissingAssociatedImages(
+            final Class<T> clazz, final String nullColumn) {
         mDatabaseHelper.transaction(new Callable<Object>() {
             @Override
             public Object call() throws Exception {

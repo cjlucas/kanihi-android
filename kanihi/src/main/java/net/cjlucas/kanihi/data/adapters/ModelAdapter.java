@@ -36,7 +36,7 @@ public class ModelAdapter<E> extends BaseAdapter {
         try {
             return mIterator.current();
         } catch (SQLException e) {
-            return null;
+            throw new RuntimeException(e);
         }
     }
 
