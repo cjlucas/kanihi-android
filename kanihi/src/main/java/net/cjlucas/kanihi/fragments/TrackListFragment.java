@@ -6,7 +6,7 @@ import android.widget.TextView;
 
 import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.data.ImageStore;
-import net.cjlucas.kanihi.model.Track;
+import net.cjlucas.kanihi.models.Track;
 
 /**
  * Created by chris on 3/10/14.

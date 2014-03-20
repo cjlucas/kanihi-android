@@ -1,4 +1,6 @@
-package net.cjlucas.kanihi.model;
+package net.cjlucas.kanihi.models.interfaces;
+
+import net.cjlucas.kanihi.models.Image;
 
 /**
  * Created by chris on 3/19/14.

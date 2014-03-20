@@ -20,15 +20,15 @@ import com.j256.ormlite.table.TableUtils;
 
 import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.parser.JsonTrackArrayParser;
-import net.cjlucas.kanihi.model.Album;
-import net.cjlucas.kanihi.model.AlbumArtist;
-import net.cjlucas.kanihi.model.Disc;
-import net.cjlucas.kanihi.model.Genre;
-import net.cjlucas.kanihi.model.Image;
-import net.cjlucas.kanihi.model.ImageRepresentation;
-import net.cjlucas.kanihi.model.Track;
-import net.cjlucas.kanihi.model.TrackArtist;
-import net.cjlucas.kanihi.model.TrackImage;
+import net.cjlucas.kanihi.models.Album;
+import net.cjlucas.kanihi.models.AlbumArtist;
+import net.cjlucas.kanihi.models.Disc;
+import net.cjlucas.kanihi.models.Genre;
+import net.cjlucas.kanihi.models.Image;
+import net.cjlucas.kanihi.models.interfaces.ImageRepresentation;
+import net.cjlucas.kanihi.models.Track;
+import net.cjlucas.kanihi.models.TrackArtist;
+import net.cjlucas.kanihi.models.TrackImage;
 import net.minidev.json.JSONArray;
 
 import java.sql.SQLException;
@@ -391,6 +391,7 @@ public class DataStore extends Thread implements Handler.Callback {
         Map<Class, String> classColumnMap = new HashMap<>();
         classColumnMap.put(AlbumArtist.class, AlbumArtist.COLUMN_IMAGE);
         classColumnMap.put(Album.class, Album.COLUMN_IMAGE);
+        classColumnMap.put(Genre.class, Genre.COLUMN_IMAGE);
 
         for (Class clazz : classColumnMap.keySet()) {
             fillMissingAssociatedImages(clazz, classColumnMap.get(clazz));

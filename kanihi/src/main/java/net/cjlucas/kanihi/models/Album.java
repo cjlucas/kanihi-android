@@ -1,9 +1,11 @@
-package net.cjlucas.kanihi.model;
+package net.cjlucas.kanihi.models;
 
 import com.j256.ormlite.dao.ForeignCollection;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
+
+import net.cjlucas.kanihi.models.interfaces.ImageRepresentation;
 
 @DatabaseTable(tableName = "albums")
 public class Album implements ImageRepresentation {

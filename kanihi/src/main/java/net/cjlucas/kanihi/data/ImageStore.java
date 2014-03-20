@@ -9,7 +9,7 @@ import android.widget.ImageView;
 import com.loopj.android.http.RequestHandle;
 
 import net.cjlucas.kanihi.api.ApiHttpClient;
-import net.cjlucas.kanihi.model.Image;
+import net.cjlucas.kanihi.models.Image;
 
 import java.io.File;
 import java.io.FileNotFoundException;

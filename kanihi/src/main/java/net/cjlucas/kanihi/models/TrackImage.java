@@ -1,4 +1,4 @@
-package net.cjlucas.kanihi.model;
+package net.cjlucas.kanihi.models;
 
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;

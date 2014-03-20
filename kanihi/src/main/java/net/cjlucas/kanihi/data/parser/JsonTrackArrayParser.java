@@ -1,12 +1,12 @@
 package net.cjlucas.kanihi.data.parser;
 
-import net.cjlucas.kanihi.model.Album;
-import net.cjlucas.kanihi.model.AlbumArtist;
-import net.cjlucas.kanihi.model.Disc;
-import net.cjlucas.kanihi.model.Genre;
-import net.cjlucas.kanihi.model.Image;
-import net.cjlucas.kanihi.model.Track;
-import net.cjlucas.kanihi.model.TrackArtist;
+import net.cjlucas.kanihi.models.Album;
+import net.cjlucas.kanihi.models.AlbumArtist;
+import net.cjlucas.kanihi.models.Disc;
+import net.cjlucas.kanihi.models.Genre;
+import net.cjlucas.kanihi.models.Image;
+import net.cjlucas.kanihi.models.Track;
+import net.cjlucas.kanihi.models.TrackArtist;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
