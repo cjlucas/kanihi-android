@@ -13,6 +13,7 @@ public class AlbumArtist implements ImageRepresentation {
     public static final String COLUMN_NAME = "name";
     public static final String COLUMN_SORT_NAME = "sort_name";
     public static final String COLUMN_IMAGE = "image";
+    public static final String COLUMN_ALBUM_COUNT = "album_count";
     public static final String COLUMN_TRACK_COUNT = "track_count";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
@@ -23,6 +24,9 @@ public class AlbumArtist implements ImageRepresentation {
 
     @DatabaseField(columnName = COLUMN_SORT_NAME)
     private String mSortName;
+
+    @DatabaseField(columnName = COLUMN_ALBUM_COUNT)
+    private long mAlbumCount;
     
     @DatabaseField(columnName = COLUMN_TRACK_COUNT)
     private long mTrackCount;
@@ -55,6 +59,14 @@ public class AlbumArtist implements ImageRepresentation {
 
     public void setSortName(String sortName) {
         mSortName = sortName;
+    }
+
+    public long getAlbumCount() {
+        return mAlbumCount;
+    }
+
+    public void setAlbumCount(long albumCount) {
+        mAlbumCount = albumCount;
     }
 
     public long getTrackCount() {

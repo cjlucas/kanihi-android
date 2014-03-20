@@ -504,6 +504,7 @@ public class DataStore extends Thread implements Handler.Callback {
                 Dao<AlbumArtist, String> albumArtistDao = mDatabaseHelper.dao(AlbumArtist.class);
                 for (AlbumArtist artist : albumArtistDao) {
                     artist.setTrackCount(mDatabaseHelper.countOf(Track.class, tracksWhere(artist)));
+                    artist.setAlbumCount(artist.getAlbums().size());
 
                     albumArtistDao.update(artist);
                 }
