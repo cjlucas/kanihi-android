@@ -26,6 +26,7 @@ public class ImageStore {
     private static final int THUMBNAIL_CACHE_SIZE = 128 * 1024;
 
     private Context mContext;
+    private ApiHttpClient mApiHttpClient;
     private Map<ImageView, RequestHandle> mRequestHandleMap;
     private LruCache<String, Drawable> mThumbnailCache;
 
@@ -33,8 +34,9 @@ public class ImageStore {
         void onImageAvailable(ImageView imageView, Drawable drawable);
     }
 
-    public ImageStore(Context context) {
+    public ImageStore(Context context, ApiHttpClient apiHttpClient) {
         mContext = context;
+        mApiHttpClient = apiHttpClient;
         mRequestHandleMap = new ConcurrentHashMap<>();
         mThumbnailCache = new LruCache<>(THUMBNAIL_CACHE_SIZE);
 
@@ -111,7 +113,7 @@ public class ImageStore {
             return;
         }
 
-        RequestHandle req = ApiHttpClient.getImage(image.getId(), thumbnail ? imageView.getWidth() : -1,
+        RequestHandle req = mApiHttpClient.getImage(image.getId(), thumbnail ? imageView.getWidth() : -1,
                 new ApiHttpClient.Callback<byte[]>() {
                     @Override
                     public void onSuccess(byte[] data) {

@@ -5,15 +5,23 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import net.cjlucas.kanihi.data.DataStore;
+import net.cjlucas.kanihi.data.ImageStore;
 import net.cjlucas.kanihi.model.Track;
 
 /**
  * Created by chris on 3/10/14.
  */
 public class TrackListFragment extends ModelListFragment<Track> {
+    private ImageStore mImageStore;
+
+    public TrackListFragment(ImageStore imageStore, DataStore dataStore) {
+        super(dataStore);
+        mImageStore = imageStore;
+    }
+
     @Override
     public int executeDefaultQuery() {
-        return DataStore.getInstance().getTracks();
+        return mDataStore.getTracks();
     }
 
     public View getRowView(Track track, View reusableView, ViewGroup viewGroup) {

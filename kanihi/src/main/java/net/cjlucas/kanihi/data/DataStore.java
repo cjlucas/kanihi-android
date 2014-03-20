@@ -49,9 +49,8 @@ public class DataStore extends Thread implements Handler.Callback {
     private static final String TAG = "DataStore";
     private static final int TRACK_LIMIT = 500;
 
-    private static DataStore mSharedDataStore;
-
     private Context mContext;
+    private ApiHttpClient mApiHttpClient;
     private Handler mHandler;
     private DatabaseHelper mDatabaseHelper;
     private AsyncQueryMonitor mQueryMonitor;
@@ -88,8 +87,9 @@ public class DataStore extends Thread implements Handler.Callback {
         }
     }
 
-    private DataStore(Context context) {
+    private DataStore(Context context, ApiHttpClient apiHttpClient) {
         mContext = context;
+        mApiHttpClient = apiHttpClient;
         mDatabaseHelper = new DatabaseHelper(mContext);
         mQueryMonitor = new AsyncQueryMonitor();
         try {
@@ -101,21 +101,15 @@ public class DataStore extends Thread implements Handler.Callback {
         mDatabaseHelper.close();
     }
 
-    public static synchronized DataStore setupInstance(Context context) {
-        if (mSharedDataStore == null) {
-            mSharedDataStore = new DataStore(context);
-            mSharedDataStore.start();
-            // noop until handler is initialized
-            while (mSharedDataStore.mHandler == null) {
+    public static synchronized DataStore newInstance(Context context,
+                                                     ApiHttpClient apiHttpClient) {
+        DataStore dataStore = new DataStore(context, apiHttpClient);
+        dataStore.start();
+        // noop until handler is initialized
+        while (dataStore.mHandler == null) {
 
-            }
         }
-
-        return mSharedDataStore;
-    }
-
-    public static synchronized DataStore getInstance() {
-        return mSharedDataStore;
+        return dataStore;
     }
 
     public void registerQueryMonitorListener(int token,
@@ -276,7 +270,7 @@ public class DataStore extends Thread implements Handler.Callback {
         if (mUpdateDbProgress != null) return;
 
         mUpdateDbProgress = new UpdateDbProgress();
-        ApiHttpClient.getTrackCount(new ApiHttpClient.Callback<Integer>() {
+        mApiHttpClient.getTrackCount(new ApiHttpClient.Callback<Integer>() {
             @Override
             public void onSuccess(Integer totalTracks) {
                 Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
@@ -302,7 +296,7 @@ public class DataStore extends Thread implements Handler.Callback {
         if (!mUpdateDbProgress.hasLoadTrackApiCallsRemaining()) return;
 
         Log.d(TAG, String.format(Locale.getDefault(), "offset: %d, limit: %d", mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT));
-        ApiHttpClient.getTracks(mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT, null, TRACK_DATA_CALLBACK);
+        mApiHttpClient.getTracks(mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT, null, TRACK_DATA_CALLBACK);
         mUpdateDbProgress.mLoadTrackApiCallsRemaining--;
     }
 

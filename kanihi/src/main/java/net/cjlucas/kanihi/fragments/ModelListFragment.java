@@ -24,6 +24,8 @@ public abstract class ModelListFragment<E> extends ListFragment
     public static final String ARG_TOKEN = "token";
     private int mToken;
 
+    protected DataStore mDataStore;
+
     protected static class ImageAttacher {
         public static void attach(Activity activity,
                                   final ImageView imageView, final Drawable drawable) {
@@ -38,18 +40,20 @@ public abstract class ModelListFragment<E> extends ListFragment
         }
     }
 
+    public ModelListFragment(DataStore dataStore) {
+        mDataStore = dataStore;
+    }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.model_list_view, container, false);
 
-        DataStore dataStore = DataStore.setupInstance(getActivity());
-
         Bundle args = getArguments();
         mToken = args != null && args.containsKey(ARG_TOKEN)
                 ? args.getInt(ARG_TOKEN) : executeDefaultQuery();
 
-        dataStore.registerQueryMonitorListener(mToken, this);
+        mDataStore.registerQueryMonitorListener(mToken, this);
 
         return view;
     }
@@ -81,8 +85,8 @@ public abstract class ModelListFragment<E> extends ListFragment
     @Override
     public void onDestroy() {
         super.onDestroy();
-        DataStore.getInstance().unregisterQueryMonitorListener(mToken);
-        DataStore.getInstance().closeQuery(mToken);
+        mDataStore.unregisterQueryMonitorListener(mToken);
+        mDataStore.closeQuery(mToken);
     }
 
     protected void blah(Fragment fragment, int token) {

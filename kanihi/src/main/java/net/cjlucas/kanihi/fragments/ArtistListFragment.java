@@ -20,13 +20,14 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
 
     private ImageStore mImageStore;
 
-    public ArtistListFragment(ImageStore imageStore) {
+    public ArtistListFragment(ImageStore imageStore, DataStore dataStore) {
+        super(dataStore);
         mImageStore = imageStore;
     }
 
     @Override
     public int executeDefaultQuery() {
-        return DataStore.getInstance().getAlbumArtists();
+        return mDataStore.getAlbumArtists();
     }
 
     public View getRowView(AlbumArtist artist, View reusableView, ViewGroup viewGroup) {
@@ -58,8 +59,8 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
     @Override
     public void onListItemClick(ListView l, View v, int position, long id) {
         AlbumArtist artist = (AlbumArtist)getListAdapter().getItem(position);
-        int token = DataStore.getInstance().getAlbums(artist);
+        int token = mDataStore.getAlbums(artist);
 
-        blah(new AlbumListFragment(mImageStore), token);
+        blah(new AlbumListFragment(mImageStore, mDataStore), token);
     }
 }

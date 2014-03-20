@@ -29,6 +29,8 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
     private ListView mMenuListView;
     private DrawerLayout mDrawerLayout;
 
+    private ApiHttpClient mApiHttpClient;
+    private DataStore mDataStore;
     private ImageStore mImageStore;
 
     @Override
@@ -36,11 +38,12 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_navigation);
 
-        ApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
-        DataStore.setupInstance(this);//.update();
-        mImageStore = new ImageStore(getApplicationContext());
-        SharedPreferences.Editor editor = getSharedPreferences(null, MODE_PRIVATE).edit();
-        editor.putString("KEY", "VALUEEE").commit();
+        mApiHttpClient = new ApiHttpClient();
+        mApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
+
+        mDataStore = DataStore.newInstance(getApplicationContext(), mApiHttpClient);//.update();
+
+        mImageStore = new ImageStore(getApplicationContext(), mApiHttpClient);
 
         String[] items = {"Artists", "Albums", "Tracks"};
 
@@ -52,17 +55,17 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
 
         mDrawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
 
-        addFragment(new ArtistListFragment(mImageStore));
+        addFragment(new ArtistListFragment(mImageStore, mDataStore));
     }
 
     private ModelListFragment fragmentForSelection(int position) {
         switch(position) {
             case 0:
-                return new ArtistListFragment(mImageStore);
+                return new ArtistListFragment(mImageStore, mDataStore);
             case 1:
-                return new AlbumListFragment(mImageStore);
+                return new AlbumListFragment(mImageStore, mDataStore);
             case 2:
-                return new TrackListFragment();
+                return new TrackListFragment(mImageStore, mDataStore);
             default:
                 throw new RuntimeException("unknown menu item selected");
         }
