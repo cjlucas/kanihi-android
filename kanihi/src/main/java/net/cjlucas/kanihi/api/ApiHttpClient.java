@@ -17,6 +17,7 @@ import org.apache.http.message.BasicHeader;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -61,18 +62,23 @@ public class ApiHttpClient {
 
     }
 
-    public void getTracks(long offset, long limit, Date lastUpdatedAt,
+    public void getTracks(long offset, long limit, String lastUpdated,
                                  final Callback<JSONArray> callback) {
-        Header[] headers = {
-                new BasicHeader("SQL-Offset", String.valueOf(offset)),
-                new BasicHeader("SQL-Limit", String.valueOf(limit)),
-                /* new BasicHeader("Last-Updated-At", "") */
-        };
 
-        mAsyncClient.get(null, getUrl("/tracks.json"), headers, null, new JsonArrayHttpResponseHandler() {
-            public void onSuccess(int i, Header[] headers, String s, JSONArray objects) {
-                callback.onSuccess(objects);
-            }
+        ArrayList<Header> headersList = new ArrayList<>();
+        headersList.add(new BasicHeader("SQL-Offset", String.valueOf(offset)));
+        headersList.add(new BasicHeader("SQL-Limit", String.valueOf(limit)));
+
+        if (lastUpdated != null) headersList.add(new BasicHeader("Last-Updated-At", lastUpdated));
+
+        Header[] headers = headersList.toArray(new Header[0]);
+
+        mAsyncClient.get(null, getUrl("/tracks.json"), headers, null,
+                new JsonArrayHttpResponseHandler() {
+                    public void onSuccess(int i, Header[] headers, String s, JSONArray objects) {
+                        callback.onSuccess(objects);
+                    }
+
             public void onFailure(int statusCode, Header[] headers, Throwable e,
                                   String rawData, JSONArray errorResponse) {
                 callback.onFailure();
@@ -80,19 +86,25 @@ public class ApiHttpClient {
         });
     }
 
-    public void getTrackCount(final Callback<Integer> callback) {
-        mAsyncClient.get(getUrl("/tracks/count.json"), new JsonObjectHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers,
-                                  String s, JSONObject response) {
-                callback.onSuccess((Integer) response.get("track_count"));
-            }
+    public void getTrackCount(String lastUpdated, final Callback<Integer> callback) {
+        ArrayList<Header> headersList = new ArrayList<>();
+        if (lastUpdated != null) headersList.add(new BasicHeader("Last-Updated-At", lastUpdated));
 
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable,
-                                  String s, JSONObject jsonObject) {
-                callback.onFailure();
-            }
+        Header[] headers = headersList.toArray(new Header[0]);
+
+        mAsyncClient.get(null, getUrl("/tracks/count.json"), headers, null,
+                new JsonObjectHttpResponseHandler() {
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers,
+                                          String s, JSONObject response) {
+                        callback.onSuccess((Integer) response.get("track_count"));
+                    }
+
+                    @Override
+                    public void onFailure(int statusCode, Header[] headers, Throwable throwable,
+                                          String s, JSONObject jsonObject) {
+                        callback.onFailure();
+                    }
         });
     }
 
@@ -118,7 +130,7 @@ public class ApiHttpClient {
             @SuppressWarnings("unchecked")
             @Override
             public void onSuccess(int statusCode, Header[] headers, String s, JSONObject jsonObject) {
-                callback.onSuccess((List<String>)jsonObject.get("deleted_tracks"));
+                callback.onSuccess((List<String>) jsonObject.get("deleted_tracks"));
             }
 
             @Override
@@ -127,6 +139,23 @@ public class ApiHttpClient {
             }
         }
         );
+    }
+
+    public void getServerTime(final Callback<String> callback) {
+        mAsyncClient.get(getUrl("/info.json"), new JsonObjectHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers,
+                                  String s, JSONObject jsonObject) {
+                JSONObject serverInfo = (JSONObject)jsonObject.get("server_info");
+                callback.onSuccess((String)serverInfo.get("server_time"));
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers,
+                                  Throwable throwable, String s, JSONObject jsonObject) {
+                callback.onFailure();
+            }
+        });
     }
 
     public RequestHandle getImage(String imageId, int width, final Callback<byte[]> callback) {

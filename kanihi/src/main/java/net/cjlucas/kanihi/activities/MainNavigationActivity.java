@@ -41,11 +41,10 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
         mApiHttpClient = new ApiHttpClient();
         mApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
 
-        mDataStore = DataStore.newInstance(getApplicationContext(), mApiHttpClient);//.update();
-
+        mDataStore = DataStore.newInstance(getApplicationContext(), mApiHttpClient);
         mImageStore = new ImageStore(getApplicationContext(), mApiHttpClient);
 
-        String[] items = {"Artists", "Albums", "Tracks"};
+        String[] items = {"Artists", "Albums", "Tracks", "Update"};
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items);
 
@@ -85,6 +84,10 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-        addFragment(fragmentForSelection(i));
+        if (i == 3) {
+            mDataStore.update();
+        } else {
+            addFragment(fragmentForSelection(i));
+        }
     }
 }

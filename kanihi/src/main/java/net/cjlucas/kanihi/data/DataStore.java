@@ -29,6 +29,7 @@ import net.cjlucas.kanihi.models.interfaces.ImageRepresentation;
 import net.cjlucas.kanihi.models.Track;
 import net.cjlucas.kanihi.models.TrackArtist;
 import net.cjlucas.kanihi.models.TrackImage;
+import net.cjlucas.kanihi.prefs.GlobalPrefs;
 import net.minidev.json.JSONArray;
 
 import java.sql.SQLException;
@@ -61,6 +62,8 @@ public class DataStore extends Thread implements Handler.Callback {
         public int mCurrentTrack;
         public int mTotalTracks;
         public int mLoadTrackApiCallsRemaining;
+        public String mLastUpdatedAt;
+        public String mServerTime; // at start of update
 
         private boolean hasLoadTrackApiCallsRemaining() {
             return mLoadTrackApiCallsRemaining > 0;
@@ -71,7 +74,8 @@ public class DataStore extends Thread implements Handler.Callback {
         UPDATE_DB(1),
         TRACK_DATA_RECEIVED(1 << 1),
         ASSOCIATE_IMAGES(1 << 2),
-        UPDATE_COUNTS(1 << 3);
+        UPDATE_COUNTS(1 << 3),
+        FINALIZE_UPDATE(1 << 4);
 
         public static MessageType forValue(int value) {
             for (MessageType type : MessageType.values()) {
@@ -268,6 +272,9 @@ public class DataStore extends Thread implements Handler.Callback {
             case UPDATE_COUNTS:
                 handleUpdateCounts(message);
                 break;
+            case FINALIZE_UPDATE:
+                handleFinalizeUpdate(message);
+                break;
             default:
                 throw new RuntimeException("Unknown message received: " + message);
         }
@@ -295,18 +302,35 @@ public class DataStore extends Thread implements Handler.Callback {
         if (mUpdateDbProgress != null) return;
 
         mUpdateDbProgress = new UpdateDbProgress();
-        mApiHttpClient.getTrackCount(new ApiHttpClient.Callback<Integer>() {
-            @Override
-            public void onSuccess(Integer totalTracks) {
-                Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
-                mUpdateDbProgress.mTotalTracks = totalTracks;
-                mUpdateDbProgress.mLoadTrackApiCallsRemaining =
-                        (int) Math.ceil((totalTracks * 1.0) / TRACK_LIMIT);
 
-                if (mUpdateDbProgress.hasLoadTrackApiCallsRemaining()) {
-                    loadTracks();
-                }
+        mUpdateDbProgress.mLastUpdatedAt = new GlobalPrefs(mContext).getLastUpdated();
+
+        mApiHttpClient.getServerTime(new ApiHttpClient.Callback<String>() {
+            @Override
+            public void onSuccess(String serverTime) {
+                Log.v(TAG, "Got server time: " + serverTime);
+                mUpdateDbProgress.mServerTime = serverTime;
             }
+
+            @Override
+            public void onFailure() {
+                Log.e(TAG, "error with getServerTime");
+            }
+        });
+
+        mApiHttpClient.getTrackCount(mUpdateDbProgress.mLastUpdatedAt,
+                new ApiHttpClient.Callback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer totalTracks) {
+                        Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
+                        mUpdateDbProgress.mTotalTracks = totalTracks;
+                        mUpdateDbProgress.mLoadTrackApiCallsRemaining =
+                                (int) Math.ceil((totalTracks * 1.0) / TRACK_LIMIT);
+
+                        if (mUpdateDbProgress.hasLoadTrackApiCallsRemaining()) {
+                            loadTracks();
+                        }
+                    }
 
             @Override
             public void onFailure() {
@@ -320,8 +344,10 @@ public class DataStore extends Thread implements Handler.Callback {
 
         if (!mUpdateDbProgress.hasLoadTrackApiCallsRemaining()) return;
 
-        Log.d(TAG, String.format(Locale.getDefault(), "offset: %d, limit: %d", mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT));
-        mApiHttpClient.getTracks(mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT, null, TRACK_DATA_CALLBACK);
+        Log.d(TAG, String.format(Locale.getDefault(), "offset: %d, limit: %d",
+                mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT));
+        mApiHttpClient.getTracks(mUpdateDbProgress.mCurrentTrack, TRACK_LIMIT,
+                mUpdateDbProgress.mLastUpdatedAt, TRACK_DATA_CALLBACK);
         mUpdateDbProgress.mLoadTrackApiCallsRemaining--;
     }
 
@@ -391,6 +417,7 @@ public class DataStore extends Thread implements Handler.Callback {
                     // send loop messages for cleanup
                     mHandler.sendEmptyMessage(MessageType.UPDATE_COUNTS.value);
                     mHandler.sendEmptyMessage(MessageType.ASSOCIATE_IMAGES.value);
+                    mHandler.sendEmptyMessage(MessageType.FINALIZE_UPDATE.value);
                 }
                 return null;
             }
@@ -490,6 +517,17 @@ public class DataStore extends Thread implements Handler.Callback {
                 return null;
             }
         });
+    }
+
+    private void handleFinalizeUpdate(Message message) {
+        Log.d(TAG, "handleFinalizeUpdate");
+
+        if (mUpdateDbProgress.mServerTime != null) {
+            new GlobalPrefs(mContext).setLastUpdated(mUpdateDbProgress.mServerTime);
+        }
+
+        mUpdateDbProgress = null;
+        Log.d(TAG, "update complete");
     }
 
     private class DatabaseHelper extends OrmLiteSqliteOpenHelper {
