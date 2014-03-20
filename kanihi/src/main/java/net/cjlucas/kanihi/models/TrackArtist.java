@@ -10,6 +10,7 @@ public class TrackArtist {
     public static final String COLUMN_UUID = "uuid";
     public static final String COLUMN_NAME = "name";
     public static final String COLUMN_SORT_NAME = "sort_name";
+    public static final String COLUMN_TRACK_COUNT = "track_count";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -19,6 +20,9 @@ public class TrackArtist {
 
     @DatabaseField(columnName = COLUMN_SORT_NAME)
     private String mSortName;
+
+    @DatabaseField(columnName = COLUMN_TRACK_COUNT)
+    private long mTrackCount;
 
     @ForeignCollectionField
     private ForeignCollection<Track> mTracks;
@@ -45,6 +49,14 @@ public class TrackArtist {
 
     public void setSortName(String sortName) {
         mSortName = sortName;
+    }
+
+    public long getTrackCount() {
+        return mTrackCount;
+    }
+
+    public void setTrackCount(long trackCount) {
+        mTrackCount = trackCount;
     }
 
     public ForeignCollection<Track> getTracks() {

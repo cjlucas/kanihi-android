@@ -70,7 +70,8 @@ public class DataStore extends Thread implements Handler.Callback {
     enum MessageType {
         UPDATE_DB(1),
         TRACK_DATA_RECEIVED(1 << 1),
-        ASSOCIATE_IMAGES(1 << 2);
+        ASSOCIATE_IMAGES(1 << 2),
+        UPDATE_COUNTS(1 << 3);
 
         public static MessageType forValue(int value) {
             for (MessageType type : MessageType.values()) {
@@ -139,53 +140,74 @@ public class DataStore extends Thread implements Handler.Callback {
         }
     }
 
-    private Where<Track, String> tracksWhere(TrackArtist artist) throws SQLException {
-        return mDatabaseHelper.where(Track.class).in(Track.COLUMN_TRACK_ARTIST, artist);
+    private Where<Track, String> tracksWhere(TrackArtist artist){
+        try {
+            return mDatabaseHelper.where(Track.class).in(Track.COLUMN_TRACK_ARTIST, artist);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private Where<Track, String> tracksWhere(Disc disc) throws SQLException {
-        return mDatabaseHelper.where(Track.class).in(Track.COLUMN_DISC, disc);
+    private Where<Track, String> tracksWhere(Disc disc) {
+        try {
+            return mDatabaseHelper.where(Track.class).in(Track.COLUMN_DISC, disc);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private Where<Track, String> tracksWhere(Genre genre) throws SQLException {
-        return mDatabaseHelper.where(Track.class).in(Track.COLUMN_GENRE, genre);
+    private Where<Track, String> tracksWhere(Genre genre) {
+        try {
+            return mDatabaseHelper.where(Track.class).in(Track.COLUMN_GENRE, genre);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private Where<Track, String> tracksWhere(Album album) throws SQLException {
-        // get the discs from the album
-        QueryBuilder<Disc, String> discsQb = mDatabaseHelper.qb(Disc.class);
-        Where<Disc, String> discsWhere = discsQb.where().eq(Disc.COLUMN_ALBUM, album);
-        discsQb.selectColumns(Disc.COLUMN_UUID);
-        discsQb.setWhere(discsWhere);
+    private Where<Track, String> tracksWhere(Album album) {
+        try {
+            // get the discs from the album
+            QueryBuilder<Disc, String> discsQb = mDatabaseHelper.qb(Disc.class);
+            Where<Disc, String> discsWhere = discsQb.where().eq(Disc.COLUMN_ALBUM, album);
+            discsQb.selectColumns(Disc.COLUMN_UUID);
+            discsQb.setWhere(discsWhere);
 
-        return mDatabaseHelper.where(Track.class).in(Track.COLUMN_DISC, discsQb);
+            return mDatabaseHelper.where(Track.class).in(Track.COLUMN_DISC, discsQb);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private Where<Track, String> tracksWhere(AlbumArtist artist) throws SQLException {
-        // get the albums from the album artist
-        QueryBuilder<Album, String> albumsQb = mDatabaseHelper.qb(Album.class);
-        Where<Album, String> albumsWhere = albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, artist);
-        albumsQb.selectColumns(Album.COLUMN_UUID);
-        albumsQb.setWhere(albumsWhere);
+    private Where<Track, String> tracksWhere(AlbumArtist artist) {
+        try {
+            // get the albums from the album artist
+            QueryBuilder<Album, String> albumsQb = mDatabaseHelper.qb(Album.class);
+            Where<Album, String> albumsWhere = albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, artist);
+            albumsQb.selectColumns(Album.COLUMN_UUID);
+            albumsQb.setWhere(albumsWhere);
 
-        // get the discs from the albums
-        QueryBuilder<Disc, String> discsQb = mDatabaseHelper.qb(Disc.class);
-        Where<Disc, String> discsWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
-        discsQb.selectColumns(Disc.COLUMN_UUID);
-        discsQb.setWhere(discsWhere);
+            // get the discs from the albums
+            QueryBuilder<Disc, String> discsQb = mDatabaseHelper.qb(Disc.class);
+            Where<Disc, String> discsWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
+            discsQb.selectColumns(Disc.COLUMN_UUID);
+            discsQb.setWhere(discsWhere);
 
-        // get the tracks from the discs
-        return mDatabaseHelper.where(Track.class).in(Track.COLUMN_DISC, discsQb);
+            // get the tracks from the discs
+            return mDatabaseHelper.where(Track.class).in(Track.COLUMN_DISC, discsQb);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private Where<Track, String> tracksWhereForObject(Object object) throws SQLException {
+    private Where<Track, String> tracksWhereForObject(Object object) {
         if (object instanceof TrackArtist) return tracksWhere((TrackArtist) object);
         if (object instanceof Genre) return tracksWhere((Genre) object);
         if (object instanceof Disc) return tracksWhere((Disc) object);
         if (object instanceof Album) return tracksWhere((Album) object);
         if (object instanceof AlbumArtist) return tracksWhere((AlbumArtist) object);
 
-        throw new RuntimeException("Unexpected class given: " + object.getClass().getName());
+        throw new IllegalArgumentException(
+                "Unexpected class given: " + object.getClass().getName());
     }
 
     public int getTracks(Object object) {
@@ -242,6 +264,9 @@ public class DataStore extends Thread implements Handler.Callback {
                 break;
             case ASSOCIATE_IMAGES:
                 handleAssociateImages(message);
+                break;
+            case UPDATE_COUNTS:
+                handleUpdateCounts(message);
                 break;
             default:
                 throw new RuntimeException("Unknown message received: " + message);
@@ -364,6 +389,7 @@ public class DataStore extends Thread implements Handler.Callback {
                     loadTracks();
                 } else {
                     // send loop messages for cleanup
+                    mHandler.sendEmptyMessage(MessageType.UPDATE_COUNTS.value);
                     mHandler.sendEmptyMessage(MessageType.ASSOCIATE_IMAGES.value);
                 }
                 return null;
@@ -418,6 +444,49 @@ public class DataStore extends Thread implements Handler.Callback {
                 }
 
                 iter.close();
+                return null;
+            }
+        });
+    }
+
+    private void handleUpdateCounts(Message message) {
+        mDatabaseHelper.transaction(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                Dao<Genre, String> genreDao = mDatabaseHelper.dao(Genre.class);
+                for (Genre genre : genreDao) {
+                    genre.setTrackCount(mDatabaseHelper.countOf(Track.class, tracksWhere(genre)));
+
+                    genreDao.update(genre);
+                }
+
+                Dao<Disc, String> discDao = mDatabaseHelper.dao(Disc.class);
+                for (Disc disc : discDao) {
+                    disc.setTrackCount(mDatabaseHelper.countOf(Track.class, tracksWhere(disc)));
+
+                    discDao.update(disc);
+                }
+
+                Dao<Album, String> albumDao = mDatabaseHelper.dao(Album.class);
+                for (Album album : albumDao) {
+                    album.setTrackCount(mDatabaseHelper.countOf(Track.class, tracksWhere(album)));
+
+                    albumDao.update(album);
+                }
+
+                Dao<AlbumArtist, String> albumArtistDao = mDatabaseHelper.dao(AlbumArtist.class);
+                for (AlbumArtist artist : albumArtistDao) {
+                    artist.setTrackCount(mDatabaseHelper.countOf(Track.class, tracksWhere(artist)));
+
+                    albumArtistDao.update(artist);
+                }
+
+                Dao<TrackArtist, String> trackArtistDao = mDatabaseHelper.dao(TrackArtist.class);
+                for (TrackArtist artist : mDatabaseHelper.dao(TrackArtist.class)) {
+                    artist.setTrackCount(mDatabaseHelper.countOf(Track.class, tracksWhere(artist)));
+
+                    trackArtistDao.update(artist);
+                }
                 return null;
             }
         });
@@ -559,6 +628,7 @@ public class DataStore extends Thread implements Handler.Callback {
         public <T> long countOf(Class<T> clazz, Where<T, String> where) {
             try {
                 QueryBuilder<T, String> qb = qb(clazz).setCountOf(true);
+                qb.setWhere(where);
                 return dao(clazz).countOf(qb.prepare());
             } catch (SQLException e) {
                 throw new RuntimeException(e);

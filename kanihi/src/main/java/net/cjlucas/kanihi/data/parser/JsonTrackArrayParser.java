@@ -7,6 +7,7 @@ import net.cjlucas.kanihi.models.Genre;
 import net.cjlucas.kanihi.models.Image;
 import net.cjlucas.kanihi.models.Track;
 import net.cjlucas.kanihi.models.TrackArtist;
+import net.cjlucas.kanihi.utils.DateUtils;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
@@ -28,8 +29,6 @@ public class JsonTrackArrayParser {
     private static final String KEY_IMAGES = "images";
 
     private static abstract class JsonModelParser {
-        private static final SimpleDateFormat mDateFormatter
-                = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss'Z'");
 
         public static Object getObject(JSONObject o, String key, Object fallback) {
             Object val = o.get(key);
@@ -50,7 +49,7 @@ public class JsonTrackArrayParser {
 
             Date date = null;
             try {
-                date = mDateFormatter.parse((String)obj);
+                date = DateUtils.RAILS_DATE_FORMAT.parse((String) obj);
             } catch (ParseException e) {
                 e.printStackTrace();
             }

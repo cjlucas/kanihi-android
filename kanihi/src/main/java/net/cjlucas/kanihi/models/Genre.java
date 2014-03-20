@@ -12,12 +12,16 @@ public class Genre implements ImageRepresentation {
     public static final String COLUMN_UUID = "uuid";
     public static final String COLUMN_NAME = "name";
     public static final String COLUMN_IMAGE = "image";
+    public static final String COLUMN_TRACK_COUNT = "track_count";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String uuid;
 
     @DatabaseField(columnName = COLUMN_NAME)
     private String name;
+
+    @DatabaseField(columnName = COLUMN_TRACK_COUNT)
+    private long mTrackCount;
 
     @DatabaseField(foreign = true, columnName = COLUMN_IMAGE)
     private Image mImage;
@@ -39,6 +43,14 @@ public class Genre implements ImageRepresentation {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public long getTrackCount() {
+        return mTrackCount;
+    }
+
+    public void setTrackCount(long trackCount) {
+        mTrackCount = trackCount;
     }
 
     public Image getImage() {

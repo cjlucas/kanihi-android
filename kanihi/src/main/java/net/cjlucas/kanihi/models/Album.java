@@ -14,6 +14,7 @@ public class Album implements ImageRepresentation {
     public static final String COLUMN_TOTAL_DISCS = "total_discs";
     public static final String COLUMN_ALBUM_ARTIST = "album_artist_id";
     public static final String COLUMN_IMAGE = "image";
+    public static final String COLUMN_TRACK_COUNT = "track_count";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -23,6 +24,9 @@ public class Album implements ImageRepresentation {
 
     @DatabaseField(columnName = COLUMN_TOTAL_DISCS)
     private int mTotalDiscs;
+
+    @DatabaseField(columnName = COLUMN_TRACK_COUNT)
+    private long mTrackCount;
 
     @DatabaseField(foreign = true, index = true, columnName = COLUMN_ALBUM_ARTIST)
     private AlbumArtist mAlbumArtist;
@@ -63,6 +67,14 @@ public class Album implements ImageRepresentation {
 
     public void setAlbumArtist(AlbumArtist albumArtist) {
         mAlbumArtist = albumArtist;
+    }
+
+    public long getTrackCount() {
+        return mTrackCount;
+    }
+
+    public void setTrackCount(long trackCount) {
+        mTrackCount = trackCount;
     }
 
     public ForeignCollection<Disc> getDiscs() {

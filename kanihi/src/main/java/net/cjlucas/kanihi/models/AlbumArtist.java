@@ -5,12 +5,15 @@ import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 
+import net.cjlucas.kanihi.models.interfaces.ImageRepresentation;
+
 @DatabaseTable(tableName = "album_artists")
 public class AlbumArtist implements ImageRepresentation {
     public static final String COLUMN_UUID = "uuid";
     public static final String COLUMN_NAME = "name";
     public static final String COLUMN_SORT_NAME = "sort_name";
     public static final String COLUMN_IMAGE = "image";
+    public static final String COLUMN_TRACK_COUNT = "track_count";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -20,6 +23,9 @@ public class AlbumArtist implements ImageRepresentation {
 
     @DatabaseField(columnName = COLUMN_SORT_NAME)
     private String mSortName;
+    
+    @DatabaseField(columnName = COLUMN_TRACK_COUNT)
+    private long mTrackCount;
 
     @DatabaseField(foreign = true, columnName = COLUMN_IMAGE)
     private Image mImage;
@@ -49,6 +55,14 @@ public class AlbumArtist implements ImageRepresentation {
 
     public void setSortName(String sortName) {
         mSortName = sortName;
+    }
+
+    public long getTrackCount() {
+        return mTrackCount;
+    }
+
+    public void setTrackCount(long trackCount) {
+        mTrackCount = trackCount;
     }
 
     public ForeignCollection<Album> getAlbums() {
