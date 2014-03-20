@@ -11,12 +11,10 @@ import com.loopj.android.http.RequestHandle;
 import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.model.Image;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,27 +33,19 @@ public class ImageStore {
         void onImageAvailable(ImageView imageView, Drawable drawable);
     }
 
-    public static synchronized void setupInstance(Context context) {
-        if (mSharedImageStore == null) {
-            mSharedImageStore = new ImageStore(context);
-        }
-    }
-
-    private ImageStore(Context context) {
+    public ImageStore(Context context) {
         mContext = context;
         mRequestHandleMap = new ConcurrentHashMap<>();
         mThumbnailCache = new LruCache<>(THUMBNAIL_CACHE_SIZE);
 
-        File[] dirs = { getImagesDir(), getThumbsDir() };
-        for (File dir : dirs) {
-            if (!dir.exists() && !dir.mkdirs()) {
-                Log.w(TAG, "Could not mkdirs: " + dir);
-            }
-        }
+        createDirIfNotExists(getImagesDir());
+        createDirIfNotExists(getThumbsDir());
     }
 
-    private static ImageStore getInstance() {
-        return mSharedImageStore;
+    private void createDirIfNotExists(File dir) {
+        if (!dir.exists() && !dir.mkdirs()) {
+            Log.w(TAG, "Could not mkdirs: " + dir);
+        }
     }
 
     private File getImagesDir() {
@@ -102,26 +92,22 @@ public class ImageStore {
         }
     }
 
-    public static void cancelAllRequests() {
-        synchronized (getInstance().mRequestHandleMap) {
-            for (ImageView key : getInstance().mRequestHandleMap.keySet()) {
-                getInstance().cancelRequest(key);
+    public void cancelAllRequests() {
+        synchronized (mRequestHandleMap) {
+            for (ImageView key : mRequestHandleMap.keySet()) {
+                cancelRequest(key);
             }
         }
     }
 
-    public static void loadImage(final Image image,
-                                 final ImageView imageView,
-                                 final boolean thumbnail,
-                                 final Callback callback) {
-        ImageStore imageStore = getInstance();
-
+    public void loadImage(final Image image, final ImageView imageView, final boolean thumbnail,
+                          final Callback callback) {
         // cancel image request on this view if one is pending
-        imageStore.cancelRequest(imageView);
+        cancelRequest(imageView);
 
-        final File imagePath = imageStore.getPath(image, thumbnail);
+        final File imagePath = getPath(image, thumbnail);
         if (imagePath.exists()) {
-            callback.onImageAvailable(imageView, imageStore.getDrawable(imagePath));
+            callback.onImageAvailable(imageView, getDrawable(imagePath));
             return;
         }
 
@@ -129,9 +115,8 @@ public class ImageStore {
                 new ApiHttpClient.Callback<byte[]>() {
                     @Override
                     public void onSuccess(byte[] data) {
-                        ImageStore imageStore = getInstance();
-                        imageStore.writeImage(image, data, thumbnail);
-                        callback.onImageAvailable(imageView, imageStore.getDrawable(imagePath));
+                        writeImage(image, data, thumbnail);
+                        callback.onImageAvailable(imageView, getDrawable(imagePath));
                     }
 
                     @Override
@@ -140,6 +125,6 @@ public class ImageStore {
                     }
                 });
 
-        imageStore.mRequestHandleMap.put(imageView, req);
+        mRequestHandleMap.put(imageView, req);
     }
 }

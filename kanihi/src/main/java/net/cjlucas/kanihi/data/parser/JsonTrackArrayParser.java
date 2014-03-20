@@ -7,7 +7,6 @@ import net.cjlucas.kanihi.model.Genre;
 import net.cjlucas.kanihi.model.Image;
 import net.cjlucas.kanihi.model.Track;
 import net.cjlucas.kanihi.model.TrackArtist;
-import net.cjlucas.kanihi.model.TrackImage;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 

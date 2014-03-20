@@ -2,12 +2,9 @@ package net.cjlucas.kanihi.fragments;
 
 import android.app.Activity;
 import android.app.Fragment;
-import android.app.ListActivity;
 import android.app.ListFragment;
-import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;

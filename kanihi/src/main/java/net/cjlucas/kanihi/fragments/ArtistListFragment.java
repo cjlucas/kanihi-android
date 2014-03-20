@@ -1,9 +1,6 @@
 package net.cjlucas.kanihi.fragments;
 
-import android.app.Fragment;
-import android.content.Intent;
 import android.graphics.drawable.Drawable;
-import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -11,7 +8,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import net.cjlucas.kanihi.R;
-import net.cjlucas.kanihi.api.ApiHttpClient;
 import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.data.ImageStore;
 import net.cjlucas.kanihi.model.AlbumArtist;
@@ -21,6 +17,12 @@ import net.cjlucas.kanihi.model.Image;
  * Created by chris on 3/10/14.
  */
 public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
+
+    private ImageStore mImageStore;
+
+    public ArtistListFragment(ImageStore imageStore) {
+        mImageStore = imageStore;
+    }
 
     @Override
     public int executeDefaultQuery() {
@@ -40,14 +42,14 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
         ImageView imageView = (ImageView)view.findViewById(R.id.image_view);
         Image image = artist.getImage();
         if (image != null) {
-            ImageStore.loadImage(image, imageView, true /* thumbnail */,
+            mImageStore.loadImage(image, imageView, true /* thumbnail */,
                     new ImageStore.Callback() {
                         @Override
                         public void onImageAvailable(final ImageView imageView,
                                                      final Drawable drawable) {
                             ImageAttacher.attach(getActivity(), imageView, drawable);
                         }
-            });
+                    });
         }
 
         return view;
@@ -58,6 +60,6 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
         AlbumArtist artist = (AlbumArtist)getListAdapter().getItem(position);
         int token = DataStore.getInstance().getAlbums(artist);
 
-        blah(new AlbumListFragment(), token);
+        blah(new AlbumListFragment(mImageStore), token);
     }
 }

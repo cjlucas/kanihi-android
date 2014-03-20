@@ -1,6 +1,5 @@
 package net.cjlucas.kanihi.data;
 
-import android.app.DownloadManager;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;

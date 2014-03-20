@@ -3,9 +3,9 @@ package net.cjlucas.kanihi.activities;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.AdapterView;
@@ -29,14 +29,18 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
     private ListView mMenuListView;
     private DrawerLayout mDrawerLayout;
 
+    private ImageStore mImageStore;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_navigation);
 
         ApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
-        DataStore.setupInstance(this);
-        ImageStore.setupInstance(getApplicationContext());
+        DataStore.setupInstance(this);//.update();
+        mImageStore = new ImageStore(getApplicationContext());
+        SharedPreferences.Editor editor = getSharedPreferences(null, MODE_PRIVATE).edit();
+        editor.putString("KEY", "VALUEEE").commit();
 
         String[] items = {"Artists", "Albums", "Tracks"};
 
@@ -48,15 +52,15 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
 
         mDrawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
 
-        addFragment(new ArtistListFragment());
+        addFragment(new ArtistListFragment(mImageStore));
     }
 
     private ModelListFragment fragmentForSelection(int position) {
         switch(position) {
             case 0:
-                return new ArtistListFragment();
+                return new ArtistListFragment(mImageStore);
             case 1:
-                return new AlbumListFragment();
+                return new AlbumListFragment(mImageStore);
             case 2:
                 return new TrackListFragment();
             default:
