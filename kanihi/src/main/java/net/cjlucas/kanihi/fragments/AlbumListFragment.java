@@ -39,7 +39,7 @@ public class AlbumListFragment extends ModelListFragment<Album> {
         ImageView imageView = (ImageView)view.findViewById(R.id.image_view);
         Image image = album.getImage();
         if (image != null) {
-            ImageStore.loadImage(image, imageView, new ImageStore.Callback() {
+            ImageStore.loadImage(image, imageView, true, new ImageStore.Callback() {
                 @Override
                 public void onImageAvailable(final ImageView imageView, final Drawable drawable) {
                     ImageAttacher.attach(getActivity(), imageView, drawable);

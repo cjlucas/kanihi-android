@@ -142,10 +142,19 @@ public class ApiHttpClient {
         );
     }
 
-    public static RequestHandle getImage(String imageId, final Callback<byte[]> callback) {
+    public static RequestHandle getImage(String imageId, int width, final Callback<byte[]> callback) {
         String url = getUrl("/images") + "/" + imageId;
 
-        return getInstance().mAsyncClient.get(null, url, new Header[0], null,
+        Log.v(TAG, "image width: " + width);
+
+        Header[] headers = new Header[1];
+        if (width > 0) {
+           headers[0] = new BasicHeader("Image-Resize-Width", String.valueOf(width));
+        } else {
+            headers = new Header[0];
+        }
+
+        return getInstance().mAsyncClient.get(null, url, headers, null,
                 new BinaryHttpResponseHandler() {
                     @Override
                     public void onSuccess(byte[] binaryData) {
@@ -153,5 +162,9 @@ public class ApiHttpClient {
                     }
                 }
         );
+    }
+
+    public static RequestHandle getImage(String imageId, final Callback<byte[]> callback) {
+        return getImage(imageId, -1, callback);
     }
 }

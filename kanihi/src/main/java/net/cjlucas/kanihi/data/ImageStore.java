@@ -3,6 +3,7 @@ package net.cjlucas.kanihi.data;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
+import android.util.LruCache;
 import android.widget.ImageView;
 
 import com.loopj.android.http.RequestHandle;
@@ -24,9 +25,11 @@ public class ImageStore {
     private static final String LARGE_DIR = "images";
     private static final String THUMB_DIR = "thumbs";
     private static final String TAG = "ImageStore";
+    private static final int THUMBNAIL_CACHE_SIZE = 128 * 1024;
 
     private Context mContext;
     private Map<ImageView, RequestHandle> mRequestHandleMap;
+    private LruCache<String, Drawable> mThumbnailCache;
 
     public interface Callback {
         void onImageAvailable(ImageView imageView, Drawable drawable);
@@ -41,6 +44,7 @@ public class ImageStore {
     private ImageStore(Context context) {
         mContext = context;
         mRequestHandleMap = new ConcurrentHashMap<>();
+        mThumbnailCache = new LruCache<>(THUMBNAIL_CACHE_SIZE);
 
         File[] dirs = { getImagesDir(), getThumbsDir() };
         for (File dir : dirs) {
@@ -92,6 +96,7 @@ public class ImageStore {
     private void cancelRequest(ImageView key) {
         RequestHandle req = mRequestHandleMap.get(key);
         if (req != null) {
+            Log.v(TAG, "cancelling pending image request");
             mRequestHandleMap.remove(key);
             req.cancel(false);
         }
@@ -107,9 +112,9 @@ public class ImageStore {
 
     public static void loadImage(final Image image,
                                  final ImageView imageView,
+                                 final boolean thumbnail,
                                  final Callback callback) {
         ImageStore imageStore = getInstance();
-        final boolean thumbnail = false; // TODO: support thumbnails
 
         // cancel image request on this view if one is pending
         imageStore.cancelRequest(imageView);
@@ -120,7 +125,7 @@ public class ImageStore {
             return;
         }
 
-        RequestHandle req = ApiHttpClient.getImage(image.getId(),
+        RequestHandle req = ApiHttpClient.getImage(image.getId(), thumbnail ? imageView.getWidth() : -1,
                 new ApiHttpClient.Callback<byte[]>() {
                     @Override
                     public void onSuccess(byte[] data) {
