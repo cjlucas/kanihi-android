@@ -9,7 +9,7 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="90dp"
-        android:background="#ccc"
+        android:background="@color/border"
         android:padding="4dp" >
 
         <RelativeLayout

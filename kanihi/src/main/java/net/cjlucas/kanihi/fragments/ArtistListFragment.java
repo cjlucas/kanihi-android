@@ -10,6 +10,7 @@ import android.widget.TextView;
 import net.cjlucas.kanihi.R;
 import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.data.ImageStore;
+import net.cjlucas.kanihi.listeners.PaddingShiftOnTouchListener;
 import net.cjlucas.kanihi.models.AlbumArtist;
 import net.cjlucas.kanihi.models.Image;
 

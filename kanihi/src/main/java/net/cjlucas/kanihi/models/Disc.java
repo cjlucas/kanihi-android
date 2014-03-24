@@ -1,6 +1,8 @@
 package net.cjlucas.kanihi.models;
 
+import com.j256.ormlite.dao.ForeignCollection;
 import com.j256.ormlite.field.DatabaseField;
+import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 
 @DatabaseTable(tableName = "discs")
@@ -29,6 +31,9 @@ public class Disc {
 
     @DatabaseField(foreign = true, index = true, columnName = COLUMN_ALBUM)
     private Album mAlbum;
+
+    @ForeignCollectionField(eager = true)
+    private ForeignCollection<Track> mTracks;
 
     public String getUuid() {
         return mUuid;
@@ -76,5 +81,13 @@ public class Disc {
 
     public void setAlbum(Album album) {
         mAlbum = album;
+    }
+
+    public ForeignCollection<Track> getTracks() {
+        return mTracks;
+    }
+
+    public void setTracks(ForeignCollection<Track> tracks) {
+        mTracks = tracks;
     }
 }

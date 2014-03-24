@@ -59,6 +59,6 @@ public class AlbumListFragment extends ModelListFragment<Album> {
         Album album = (Album)getListAdapter().getItem(position);
         int token = mDataStore.getTracks(album);
 
-        blah(new TrackListFragment(mImageStore, mDataStore), token);
+        blah(new SingleAlbumListFragment(mImageStore, mDataStore, album), token);
     }
 }

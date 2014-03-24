@@ -3,7 +3,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#e6e3e3">
+    android:background="@color/background">
 
     <LinearLayout android:id="@+id/progressContainer"
         android:orientation="vertical"
@@ -31,7 +31,7 @@
         <ListView android:id="@android:id/list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:divider="#e6e3e3"
+            android:divider="@color/background"
             android:dividerHeight="10dp"
             android:drawSelectorOnTop="false" />
     </FrameLayout>
