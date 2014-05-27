@@ -401,10 +401,17 @@ public class DataStore extends Thread implements Handler.Callback {
                     for (Image image : trackImages.get(trackId)) {
                         mDbHelper.createOrUpdate(Image.class, image);
 
+                        // skip if track-image entry already exists
+                        Where<TrackImage, String> where = mDbHelper.where(TrackImage.class);
+                        where.eq(TrackImage.COLUMN_TRACK_ID, trackId)
+                                .eq(TrackImage.COLUMN_IMAGE_ID, image.getId())
+                                .and(2 /* number of clauses added */);
+                        if (mDbHelper.countOf(TrackImage.class, where) > 0) continue;
+
                         TrackImage trackImage = new TrackImage();
                         trackImage.setTrackId(trackId);
                         trackImage.setImageId(image.getId());
-                        mDbHelper.createOrUpdate(TrackImage.class, trackImage);
+                        mDbHelper.create(TrackImage.class, trackImage);
                     }
                 }
 
@@ -607,6 +614,10 @@ public class DataStore extends Thread implements Handler.Callback {
             } catch (SQLException e) {
                 Log.e(TAG, "caught SQLException", e);
             }
+        }
+
+        public <T> void create(Class<T> clazz, T object) throws SQLException {
+            dao(clazz).create(object);
         }
 
         public <T> void createOrUpdate(Class<T> clazz, T object) throws SQLException {
