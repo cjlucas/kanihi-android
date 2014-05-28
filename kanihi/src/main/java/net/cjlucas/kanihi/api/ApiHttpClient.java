@@ -108,36 +108,29 @@ public class ApiHttpClient {
         });
     }
 
-    public void getDeletedTracks(List<String> uuids,
-                                 final Callback<List<String>> callback) {
+    public void getDeletedTracks(long offset, long limit, String lastUpdated,
+                                 final Callback<JSONArray> callback) {
+        ArrayList<Header> headersList = new ArrayList<>();
+        headersList.add(new BasicHeader("SQL-Offset", String.valueOf(offset)));
+        headersList.add(new BasicHeader("SQL-Limit", String.valueOf(limit)));
 
-        JSONArray jsonArray = new JSONArray();
-        for (String uuid : uuids) jsonArray.add(uuid);
+        if (lastUpdated != null) headersList.add(new BasicHeader("Last-Updated-At", lastUpdated));
 
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("current_tracks", jsonArray);
+        Header[] headers = headersList.toArray(new Header[0]);
 
-        HttpEntity postEntity;
-        try {
-            postEntity = new StringEntity(jsonObject.toJSONString());
-        } catch (UnsupportedEncodingException e) {
-            callback.onFailure();
-            return;
-        }
+        mAsyncClient.get(null, getUrl("/tracks/deleted.json"), headers, null,
+                new JsonArrayHttpResponseHandler()  {
+                    @Override
+                    public void onSuccess(int i, Header[] headers, String s, JSONArray objects) {
+                        callback.onSuccess(objects);
+                    }
 
-        mAsyncClient.post(null, getUrl("/tracks/deleted.json"),
-                postEntity, "application/json", new JsonObjectHttpResponseHandler() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, String s, JSONObject jsonObject) {
-                callback.onSuccess((List<String>) jsonObject.get("deleted_tracks"));
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable, String s, JSONObject jsonObject) {
-                callback.onFailure();
-            }
-        }
+                    @Override
+                    public void onFailure(int i, Header[] headers, Throwable throwable,
+                                          String s, JSONArray objects) {
+                        callback.onFailure();
+                    }
+                }
         );
     }
 

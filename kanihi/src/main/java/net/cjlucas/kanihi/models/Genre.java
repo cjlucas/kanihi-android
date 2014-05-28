@@ -6,9 +6,10 @@ import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 
 import net.cjlucas.kanihi.models.interfaces.ImageRepresentation;
+import net.cjlucas.kanihi.models.interfaces.UniqueModel;
 
 @DatabaseTable(tableName = "genres")
-public class Genre implements ImageRepresentation {
+public class Genre implements UniqueModel, ImageRepresentation {
     public static final String COLUMN_UUID = "uuid";
     public static final String COLUMN_NAME = "name";
     public static final String COLUMN_IMAGE = "image";

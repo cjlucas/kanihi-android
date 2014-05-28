@@ -5,8 +5,10 @@ import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 
+import net.cjlucas.kanihi.models.interfaces.UniqueModel;
+
 @DatabaseTable(tableName = "discs")
-public class Disc {
+public class Disc implements UniqueModel {
     public static final String COLUMN_UUID = "uuid";
     public static final String COLUMN_DISC_NUM = "disc_num";
     public static final String COLUMN_SUBTITLE = "subtitle";
