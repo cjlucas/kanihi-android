@@ -39,7 +39,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -50,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 
 public class DataStore extends Thread implements Handler.Callback {
     private static final String TAG = "DataStore";
-    private static final int TRACK_LIMIT = 2;
+    private static final int TRACK_LIMIT = 500;
 
     private Context mContext;
     private ApiHttpClient mApiHttpClient;
@@ -79,13 +78,15 @@ public class DataStore extends Thread implements Handler.Callback {
     }
 
     enum MessageType {
-        UPDATE_DB(1),
-        PURGE_DELETED_TRACKS(1 << 1),
-        CLEANUP_ORPHANED_RELATIONSHIPS(1 << 2),
-        TRACK_DATA_RECEIVED(1 << 3),
-        ASSOCIATE_IMAGES(1 << 4),
-        UPDATE_COUNTS(1 << 5),
-        FINALIZE_UPDATE(1 << 6);
+        UPDATE_DB(0),
+        FETCH_DELETED_TRACKS(1),
+        DELETED_TRACKS_RECEIVED(2),
+        CLEANUP_ORPHANED_RELATIONSHIPS(3),
+        FETCH_TRACK_DATA(4),
+        TRACK_DATA_RECEIVED(5),
+        ASSOCIATE_IMAGES(6),
+        UPDATE_COUNTS(7),
+        FINALIZE_UPDATE(8);
 
         public static MessageType forValue(int value) {
             for (MessageType type : MessageType.values()) {
@@ -273,11 +274,17 @@ public class DataStore extends Thread implements Handler.Callback {
             case UPDATE_DB:
                 handleUpdateDb(message);
                 break;
+            case FETCH_DELETED_TRACKS:
+                handleFetchDeletedTracks(message);
+                break;
+            case DELETED_TRACKS_RECEIVED:
+                handleDeletedTracksReceived(message);
+                break;
             case CLEANUP_ORPHANED_RELATIONSHIPS:
                 handleCleanupOrphanedRelationships(message);
                 break;
-            case PURGE_DELETED_TRACKS:
-               handlePurgeDeletedTracks(message);
+            case FETCH_TRACK_DATA:
+                handleFetchTrackData(message);
                 break;
             case TRACK_DATA_RECEIVED:
                 handleTrackDataReceived(message);
@@ -316,7 +323,7 @@ public class DataStore extends Thread implements Handler.Callback {
         @Override
         public void onSuccess(JSONArray data) {
             Log.v(TAG, "DELETED_TRACKS_CALLBACK: json array size: " + data.size());
-            Message msg = mHandler.obtainMessage(MessageType.PURGE_DELETED_TRACKS.value);
+            Message msg = mHandler.obtainMessage(MessageType.DELETED_TRACKS_RECEIVED.value);
             msg.obj = data;
             mHandler.sendMessage(msg);
         }
@@ -329,6 +336,9 @@ public class DataStore extends Thread implements Handler.Callback {
 
     private void handleUpdateDb(Message message) {
         if (mModelCache == null) mModelCache = new HashSet<>(5000); // TODO: figure out when to delete this
+
+        if (mUpdateDbProgress != null) return;
+
         mUpdateDbProgress = new UpdateDbProgress();
         mUpdateDbProgress.mLastUpdatedAt = new GlobalPrefs(mContext).getLastUpdated();
 
@@ -345,14 +355,6 @@ public class DataStore extends Thread implements Handler.Callback {
             }
         });
 
-        mApiCursor = new ApiCursor();
-        if (mDbHelper.countOf(Track.class, null) > 0) {
-            fetchDeletedTracks(0, TRACK_LIMIT);
-        } else {
-            Log.v(TAG, "handleUpdateDb: first run, skipped fetching deleted tracks");
-            fetchTracks(0, TRACK_LIMIT);
-        }
-
         mApiHttpClient.getTrackCount(mUpdateDbProgress.mLastUpdatedAt,
                 new ApiHttpClient.Callback<Integer>() {
                     @Override
@@ -361,11 +363,20 @@ public class DataStore extends Thread implements Handler.Callback {
                         mUpdateDbProgress.mTotalTracks = totalTracks;
                     }
 
-            @Override
-            public void onFailure() {
-                Log.e(TAG, "getTrackCount failed");
-            }
-        });
+                    @Override
+                    public void onFailure() {
+                        Log.e(TAG, "getTrackCount failed");
+                    }
+                }
+        );
+
+        if (mDbHelper.countOf(Track.class, null) > 0) {
+            mHandler.sendEmptyMessage(MessageType.FETCH_DELETED_TRACKS.value);
+        } else {
+            Log.v(TAG, "handleUpdateDb: first run, skipped fetching deleted tracks");
+            mHandler.sendEmptyMessage(MessageType.FETCH_TRACK_DATA.value);
+        }
+
     }
 
     private void fetchDeletedTracks(long offset, long limit) {
@@ -376,7 +387,7 @@ public class DataStore extends Thread implements Handler.Callback {
         mApiCursor.mLastLimitUsed = limit;
     }
 
-    private void fetchTracks(long offset, long limit) {
+    private void fetchTrackData(long offset, long limit) {
         Log.d(TAG, offset + " " + limit);
         mApiHttpClient.getTracks(offset, limit,
                 new GlobalPrefs(mContext).getLastUpdated(), TRACK_DATA_CALLBACK);
@@ -392,7 +403,12 @@ public class DataStore extends Thread implements Handler.Callback {
         return false;
     }
 
-    private void handlePurgeDeletedTracks(Message message) {
+    private void handleFetchDeletedTracks(Message message) {
+        mApiCursor = new ApiCursor();
+        fetchDeletedTracks(0, TRACK_LIMIT);
+    }
+
+    private void handleDeletedTracksReceived(Message message) {
         JSONArray data = (JSONArray)message.obj;
         List<String> uuids = new ArrayList<>();
         for (Object o : data) uuids.add((String)o);
@@ -400,8 +416,8 @@ public class DataStore extends Thread implements Handler.Callback {
         mDbHelper.deleteIds(Track.class, uuids);
 
         if (data.size() < mApiCursor.mLastLimitUsed) {
-            mApiCursor = new ApiCursor();
-            fetchTracks(0, TRACK_LIMIT);
+            mApiCursor = null;
+            mHandler.sendEmptyMessage(MessageType.FETCH_TRACK_DATA.value);
         } else {
             fetchDeletedTracks(mApiCursor.mCurrentOffset + data.size(), TRACK_LIMIT);
         }
@@ -422,6 +438,11 @@ public class DataStore extends Thread implements Handler.Callback {
         deleteOrphanedObjects(Disc.class);
         deleteOrphanedObjects(Album.class);
         deleteOrphanedObjects(AlbumArtist.class);
+    }
+
+    private void handleFetchTrackData(Message message) {
+        mApiCursor = new ApiCursor();
+        fetchTrackData(0, TRACK_LIMIT);
     }
 
     private void handleTrackDataReceived(Message message) {
@@ -490,13 +511,13 @@ public class DataStore extends Thread implements Handler.Callback {
         });
 
         if (tracksSize < mApiCursor.mLastLimitUsed) {
-            // send loop messages for cleanup
+            mApiCursor = null;
             mHandler.sendEmptyMessage(MessageType.CLEANUP_ORPHANED_RELATIONSHIPS.value);
             mHandler.sendEmptyMessage(MessageType.UPDATE_COUNTS.value);
             mHandler.sendEmptyMessage(MessageType.ASSOCIATE_IMAGES.value);
             mHandler.sendEmptyMessage(MessageType.FINALIZE_UPDATE.value);
         } else {
-            fetchTracks(mApiCursor.mCurrentOffset + tracksSize, TRACK_LIMIT);
+            fetchTrackData(mApiCursor.mCurrentOffset + tracksSize, TRACK_LIMIT);
         }
     }
 
