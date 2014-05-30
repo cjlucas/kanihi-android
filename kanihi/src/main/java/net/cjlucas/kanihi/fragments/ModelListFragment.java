@@ -3,6 +3,8 @@ package net.cjlucas.kanihi.fragments;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.ListFragment;
+import android.app.LoaderManager;
+import android.content.Loader;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -11,20 +13,45 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.j256.ormlite.dao.CloseableIterator;
+import com.j256.ormlite.stmt.PreparedQuery;
 
 import net.cjlucas.kanihi.R;
-import net.cjlucas.kanihi.data.AsyncQueryMonitor;
+import net.cjlucas.kanihi.data.CloseableIteratorAsyncLoader;
 import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.data.adapters.ModelAdapter;
 import net.cjlucas.kanihi.data.adapters.RowViewAdapter;
 
 public abstract class ModelListFragment<E> extends ListFragment
-        implements AsyncQueryMonitor.Listener<E>, RowViewAdapter<E> {
+        implements RowViewAdapter<E>, LoaderManager.LoaderCallbacks<CloseableIterator<E>> {
 
     public static final String ARG_TOKEN = "token";
     private int mToken;
 
     protected DataStore mDataStore;
+
+    @Override
+    public Loader<CloseableIterator<E>> onCreateLoader(int id, Bundle args) {
+        return new CloseableIteratorAsyncLoader<>(getActivity(), mDataStore,
+                getGenericClass(), getDefaultQuery());
+    }
+
+    @Override
+    public void onLoadFinished(Loader<CloseableIterator<E>> loader,
+                               final CloseableIterator<E> iterator) {
+        if (getActivity() == null) return;
+
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                setListAdapter(new ModelAdapter<>(ModelListFragment.this, iterator));
+            }
+        });
+    }
+
+    @Override
+    public void onLoaderReset(Loader<CloseableIterator<E>> loader) {
+        // TODO: figure out what to do here
+    }
 
     protected static class ImageAttacher {
         public static void attach(Activity activity,
@@ -48,13 +75,6 @@ public abstract class ModelListFragment<E> extends ListFragment
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.model_list_view, container, false);
-
-        Bundle args = getArguments();
-        mToken = args != null && args.containsKey(ARG_TOKEN)
-                ? args.getInt(ARG_TOKEN) : executeDefaultQuery();
-
-        mDataStore.registerQueryMonitorListener(mToken, this);
-
         return view;
     }
 
@@ -64,37 +84,24 @@ public abstract class ModelListFragment<E> extends ListFragment
     }
 
     @Override
-    public void onQueryComplete(final CloseableIterator<E> iterator) {
-        if (getActivity() == null) return;
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
 
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                setListAdapter(new ModelAdapter<>(ModelListFragment.this, iterator));
-            }
-        });
-    }
-
-    protected Bundle bundleWithToken(int token) {
-        Bundle bundle = new Bundle();
-        bundle.putInt(ARG_TOKEN, token);
-
-        return bundle;
+        if (getLoaderManager() == null) return;
+        getLoaderManager().initLoader(1, null ,this);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mDataStore.unregisterQueryMonitorListener(mToken);
-        mDataStore.closeQuery(mToken);
     }
 
-    protected void blah(Fragment fragment, int token) {
-        fragment.setArguments(bundleWithToken(token));
+    protected void blah(Fragment fragment) {
 
         getFragmentManager().beginTransaction()
                 .addToBackStack(null).replace(getId(), fragment).commit();
     }
 
-    public abstract int executeDefaultQuery();
+    public abstract Class<E> getGenericClass();
+    public abstract PreparedQuery<E> getDefaultQuery();
 }

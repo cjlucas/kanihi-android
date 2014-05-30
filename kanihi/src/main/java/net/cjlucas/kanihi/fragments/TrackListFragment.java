@@ -1,11 +1,21 @@
 package net.cjlucas.kanihi.fragments;
 
+import android.app.Activity;
+import android.app.LoaderManager;
+import android.content.Loader;
+import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.j256.ormlite.dao.CloseableIterator;
+import com.j256.ormlite.stmt.PreparedQuery;
+
+import net.cjlucas.kanihi.data.CloseableIteratorAsyncLoader;
 import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.data.ImageStore;
+import net.cjlucas.kanihi.data.adapters.ModelAdapter;
 import net.cjlucas.kanihi.models.Track;
 
 /**
@@ -20,8 +30,13 @@ public class TrackListFragment extends ModelListFragment<Track> {
     }
 
     @Override
-    public int executeDefaultQuery() {
-        return mDataStore.getTracks();
+    public Class<Track> getGenericClass() {
+        return Track.class;
+    }
+
+    @Override
+    public PreparedQuery<Track> getDefaultQuery() {
+        return mDataStore.getTracksQuery(Track.COLUMN_TITLE, true);
     }
 
     public View getRowView(Track track, View reusableView, ViewGroup viewGroup) {
@@ -35,5 +50,11 @@ public class TrackListFragment extends ModelListFragment<Track> {
         textView.setText(track.getTitle());
 
         return view;
+    }
+    @Override
+    public void onAttach(Activity activity) {
+        Log.d("ArtistListFragment", "onAttached");
+        super.onAttach(activity);
+        getLoaderManager().initLoader(1, null, this);
     }
 }

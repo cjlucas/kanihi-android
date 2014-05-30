@@ -55,10 +55,14 @@ public class DataStore extends Thread implements Handler.Callback {
     private ApiHttpClient mApiHttpClient;
     private Handler mHandler;
     private DatabaseHelper mDbHelper;
-    private AsyncQueryMonitor mQueryMonitor;
     private HashSet<Object> mModelCache;
     private UpdateDbProgress mUpdateDbProgress;
     private ApiCursor mApiCursor;
+    private Observer mObserver;
+
+    public interface Observer {
+        public void onDatabaseUpdated();
+    }
 
     public class UpdateDbProgress {
         public int mCurrentTrack;
@@ -107,7 +111,6 @@ public class DataStore extends Thread implements Handler.Callback {
         mContext = context;
         mApiHttpClient = apiHttpClient;
         mDbHelper = new DatabaseHelper(mContext);
-        mQueryMonitor = new AsyncQueryMonitor();
         try {
             mDbHelper.getWritableDatabase();
         } catch (SQLiteException e) {}
@@ -128,31 +131,17 @@ public class DataStore extends Thread implements Handler.Callback {
         return dataStore;
     }
 
-    public void registerQueryMonitorListener(int token,
-                                             AsyncQueryMonitor.Listener<?> listener) {
-        mQueryMonitor.registerListener(listener, token);
+    public void registerObserver(Observer observer) {
+        mObserver = observer;
     }
 
-    public void unregisterQueryMonitorListener(int token) {
-        mQueryMonitor.unregisterListener(token);
+    public void unregisterObserver(Observer observer) {
+        mObserver = null;
     }
 
-    public void closeQuery(int token) {
-        mQueryMonitor.closeQuery(token);
-    }
-
-    private int getTracks(Where<Track, String> where) throws SQLException {
-        return mDbHelper.submit(Track.class,
-                mDbHelper.preparedQuery(Track.class, where, Track.COLUMN_TITLE, true));
-    }
-
-    public int getTracks() {
-        try {
-            return mDbHelper.submit(Track.class,
-                    mDbHelper.preparedQuery(Track.class, null, Track.COLUMN_TITLE, true));
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+    private void notifyObserver() {
+        if (mObserver != null)
+            mObserver.onDatabaseUpdated();
     }
 
     private Where<Track, String> tracksWhere(TrackArtist artist){
@@ -225,11 +214,22 @@ public class DataStore extends Thread implements Handler.Callback {
                 "Unexpected class given: " + object.getClass().getName());
     }
 
-    public int getTracks(Object object) {
+    private <T> PreparedQuery<T> buildPreparedQuery(Class<T> clazz, String sortColumn,
+                                                    boolean sortAscending) {
         try {
-            return getTracks(tracksWhereForObject(object));
+            return mDbHelper.qb(clazz)
+                    .orderBy(sortColumn, sortAscending).prepare();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Could not prepare query");
+        }
+    }
+
+    public <T> CloseableIterator<T> executePreparedQuery(Class<T> clazz,
+                                                         PreparedQuery<T> preparedQuery) {
+        try {
+            return mDbHelper.dao(clazz).iterator(preparedQuery);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not execute prepared query");
         }
     }
 
@@ -241,22 +241,16 @@ public class DataStore extends Thread implements Handler.Callback {
         }
     }
 
-    public int getAlbumArtists() {
-        return mDbHelper.submit(AlbumArtist.class, null, AlbumArtist.COLUMN_NAME, true);
+    public PreparedQuery<Track> getTracksQuery(String sortColumn, boolean sortAscending) {
+        return buildPreparedQuery(Track.class, sortColumn, sortAscending);
     }
 
-    public int getAlbums() {
-        return mDbHelper.submit(Album.class, null, Album.COLUMN_TITLE, true);
+    public PreparedQuery<Album> getAlbumsQuery(String sortColumn, boolean sortAscending) {
+        return buildPreparedQuery(Album.class, sortColumn, sortAscending);
     }
 
-    public int getAlbums(AlbumArtist artist) {
-        try {
-            return mDbHelper.submit(Album.class,
-                    mDbHelper.where(Album.class).eq(Album.COLUMN_ALBUM_ARTIST, artist),
-                    Album.COLUMN_TITLE, true);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+    public PreparedQuery<AlbumArtist> getAlbumArtistsQuery(String sortColumn, boolean sortAscending) {
+        return buildPreparedQuery(AlbumArtist.class, sortColumn, sortAscending);
     }
 
     public void update() {
@@ -626,6 +620,7 @@ public class DataStore extends Thread implements Handler.Callback {
 
         mUpdateDbProgress = null;
         Log.d(TAG, "update complete");
+        notifyObserver();
     }
 
     private class DatabaseHelper extends OrmLiteSqliteOpenHelper {
@@ -660,39 +655,6 @@ public class DataStore extends Thread implements Handler.Callback {
         @Override
         public void onUpgrade(SQLiteDatabase db, ConnectionSource connectionSource, int i, int i2) {
 
-        }
-
-        public <T> int submit(final Dao<T, ?> dao, final PreparedQuery<T> query) {
-            int id;
-            do {
-                id = new Random().nextInt();
-            } while (mQueryMonitor.isTokenUsed(id));
-
-            final int token = id;
-
-            mExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        mQueryMonitor.putIterator(token, dao.iterator(query));
-                    } catch (SQLException e) {
-                    }
-                }
-            });
-
-            return token;
-        }
-
-        public <T> int submit(Class<T> clazz, PreparedQuery<T> query) {
-            return submit(dao(clazz), query);
-        } 
-        public <T> int submit(Class<T> clazz, Where<T, String> where,
-                                 String orderColumn, boolean ascending) {
-            try {
-                return submit(clazz, preparedQuery(clazz, where, orderColumn, ascending));
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
         }
 
         public <V> void transaction(final Callable<V> callable) {
