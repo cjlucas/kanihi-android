@@ -3,8 +3,11 @@ package net.cjlucas.kanihi.activities;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
-import android.content.SharedPreferences;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.v4.widget.DrawerLayout;
 import android.view.Gravity;
 import android.view.View;
@@ -14,7 +17,7 @@ import android.widget.ListView;
 
 import net.cjlucas.kanihi.R;
 import net.cjlucas.kanihi.api.ApiHttpClient;
-import net.cjlucas.kanihi.data.DataStore;
+import net.cjlucas.kanihi.data.DataService;
 import net.cjlucas.kanihi.data.ImageStore;
 import net.cjlucas.kanihi.fragments.AlbumListFragment;
 import net.cjlucas.kanihi.fragments.ArtistListFragment;
@@ -30,7 +33,7 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
     private DrawerLayout mDrawerLayout;
 
     private ApiHttpClient mApiHttpClient;
-    private DataStore mDataStore;
+    private DataService mDataService;
     private ImageStore mImageStore;
 
     @Override
@@ -41,7 +44,6 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
         mApiHttpClient = new ApiHttpClient();
         mApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
 
-        mDataStore = DataStore.newInstance(getApplicationContext(), mApiHttpClient);
         mImageStore = new ImageStore(getApplicationContext(), mApiHttpClient);
 
         String[] items = {"Artists", "Albums", "Tracks", "Update"};
@@ -55,6 +57,22 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
         mDrawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
 
         addFragment(new ArtistListFragment(mImageStore, mDataStore));
+        startService(new Intent(this, DataService.class));
+
+        bindService(new Intent(getApplicationContext(), DataService.class), new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                mDataService = ((DataService.LocalBinder)service).getService();
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+                mDataService = null;
+            }
+        }, 0);
+
+        addFragment(new ArtistListFragment());
+
     }
 
     private ModelListFragment fragmentForSelection(int position) {
@@ -85,7 +103,7 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
         if (i == 3) {
-            mDataStore.update();
+            mDataService.update();
         } else {
             addFragment(fragmentForSelection(i));
         }

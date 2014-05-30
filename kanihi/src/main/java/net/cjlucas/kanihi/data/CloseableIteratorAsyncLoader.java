@@ -7,25 +7,23 @@ import android.util.Log;
 import com.j256.ormlite.dao.CloseableIterator;
 import com.j256.ormlite.stmt.PreparedQuery;
 
-import net.cjlucas.kanihi.models.Track;
-
 /**
  * Created by chris on 5/29/14.
  */
 public class CloseableIteratorAsyncLoader<T> extends AsyncTaskLoader<CloseableIterator<T>>
-    implements DataStore.Observer {
+    implements DataService.Observer {
     private static final String TAG = "CloseableIteratorAsyncLoader";
 
     private Class<T> mClazz;
     private PreparedQuery<T> mPreparedQuery;
-    private DataStore mDataStore;
+    private DataService mDataService;
     private CloseableIterator<T> mIterator;
 
-    public CloseableIteratorAsyncLoader(Context context, DataStore dataStore,
+    public CloseableIteratorAsyncLoader(Context context, DataService dataService,
                                         Class<T> clazz, PreparedQuery<T> preparedQuery) {
         super(context);
-        mDataStore = dataStore;
-        mDataStore.registerObserver(this);
+        mDataService = dataService;
+        mDataService.registerObserver(this);
         mClazz = clazz;
         mPreparedQuery = preparedQuery;
     }
@@ -39,7 +37,7 @@ public class CloseableIteratorAsyncLoader<T> extends AsyncTaskLoader<CloseableIt
     @Override
     public CloseableIterator<T> loadInBackground() {
         Log.d(TAG, "loadInBackground");
-        mIterator = mDataStore.executePreparedQuery(mClazz, mPreparedQuery);
+        mIterator = mDataService.executePreparedQuery(mClazz, mPreparedQuery);
         return mIterator;
     }
 
@@ -65,7 +63,7 @@ public class CloseableIteratorAsyncLoader<T> extends AsyncTaskLoader<CloseableIt
             mIterator.closeQuietly();
         }
 
-        mDataStore.unregisterObserver(this);
+        mDataService.unregisterObserver(this);
     }
 
     @Override

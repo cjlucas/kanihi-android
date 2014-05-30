@@ -1,11 +1,11 @@
 package net.cjlucas.kanihi.data;
 
+import android.app.Service;
 import android.content.Context;
+import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteException;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
+import android.os.Binder;
+import android.os.IBinder;
 import android.util.Log;
 
 import com.j256.ormlite.android.apptools.OrmLiteSqliteOpenHelper;
@@ -40,39 +40,45 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
-public class DataStore extends Thread implements Handler.Callback {
-    private static final String TAG = "DataStore";
+public class DataService extends Service {
+    private static final String TAG = "DataService";
     private static final int TRACK_LIMIT = 500;
 
-    private Context mContext;
     private ApiHttpClient mApiHttpClient;
-    private Handler mHandler;
     private DatabaseHelper mDbHelper;
     private HashSet<Object> mModelCache;
     private UpdateDbProgress mUpdateDbProgress;
     private ApiCursor mApiCursor;
     private Observer mObserver;
+    private IBinder mBinder = new LocalBinder();
 
     public interface Observer {
         public void onDatabaseUpdated();
     }
 
     public class UpdateDbProgress {
+        private UpdateDbStages mCurrentStage;
         public int mCurrentTrack;
         public int mTotalTracks;
-        public int mLoadTrackApiCallsRemaining;
         public String mLastUpdatedAt;
         public String mServerTime; // at start of update
+    }
 
-        private boolean hasLoadTrackApiCallsRemaining() {
-            return mLoadTrackApiCallsRemaining > 0;
+    enum UpdateDbStages {
+        FETCH_DELETED_TRACKS,
+        CLEANUP_ORPHANED_RELATIONSHIPS,
+        FETCH_TRACK_DATA,
+        ASSOCIATE_IMAGES,
+        UPDATE_COUNTS,
+        UPDATE_COMPLETE
+    }
+
+    public class LocalBinder extends Binder {
+        public DataService getService () {
+            return DataService.this;
         }
     }
 
@@ -81,54 +87,33 @@ public class DataStore extends Thread implements Handler.Callback {
         public long mLastLimitUsed;
     }
 
-    enum MessageType {
-        UPDATE_DB(0),
-        FETCH_DELETED_TRACKS(1),
-        DELETED_TRACKS_RECEIVED(2),
-        CLEANUP_ORPHANED_RELATIONSHIPS(3),
-        FETCH_TRACK_DATA(4),
-        TRACK_DATA_RECEIVED(5),
-        ASSOCIATE_IMAGES(6),
-        UPDATE_COUNTS(7),
-        FINALIZE_UPDATE(8);
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Log.d(TAG, "onCreate");
 
-        public static MessageType forValue(int value) {
-            for (MessageType type : MessageType.values()) {
-                if (type.value == value)
-                    return type;
-            }
-            return null;
-        }
-
-        public final int value;
-
-        MessageType(int value) {
-            this.value = value;
-        }
+        mDbHelper = new DatabaseHelper(this);
+        mApiHttpClient = new ApiHttpClient();
+        mApiHttpClient.setApiEndpoint("192.168.0.2", 8080);
     }
 
-    private DataStore(Context context, ApiHttpClient apiHttpClient) {
-        mContext = context;
-        mApiHttpClient = apiHttpClient;
-        mDbHelper = new DatabaseHelper(mContext);
-        try {
-            mDbHelper.getWritableDatabase();
-        } catch (SQLiteException e) {}
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        Log.d(TAG, "onLowMemory");
     }
 
-    public void close() {
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy");
+
         mDbHelper.close();
     }
 
-    public static synchronized DataStore newInstance(Context context,
-                                                     ApiHttpClient apiHttpClient) {
-        DataStore dataStore = new DataStore(context, apiHttpClient);
-        dataStore.start();
-        // noop until handler is initialized
-        while (dataStore.mHandler == null) {
-
-        }
-        return dataStore;
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mBinder;
     }
 
     public void registerObserver(Observer observer) {
@@ -253,58 +238,20 @@ public class DataStore extends Thread implements Handler.Callback {
         return buildPreparedQuery(AlbumArtist.class, sortColumn, sortAscending);
     }
 
-    public void update() {
-        mHandler.sendEmptyMessage(MessageType.UPDATE_DB.value);
-    }
+    public UpdateDbProgress update() {
+        if (mUpdateDbProgress != null)
+            return mUpdateDbProgress;
 
-    public void run() {
-        Looper.prepare();
-        mHandler = new Handler(this);
-        Looper.loop();
-    }
-
-    public boolean handleMessage(Message message) {
-        switch (MessageType.forValue(message.what)) {
-            case UPDATE_DB:
-                handleUpdateDb(message);
-                break;
-            case FETCH_DELETED_TRACKS:
-                handleFetchDeletedTracks(message);
-                break;
-            case DELETED_TRACKS_RECEIVED:
-                handleDeletedTracksReceived(message);
-                break;
-            case CLEANUP_ORPHANED_RELATIONSHIPS:
-                handleCleanupOrphanedRelationships(message);
-                break;
-            case FETCH_TRACK_DATA:
-                handleFetchTrackData(message);
-                break;
-            case TRACK_DATA_RECEIVED:
-                handleTrackDataReceived(message);
-                break;
-            case ASSOCIATE_IMAGES:
-                handleAssociateImages(message);
-                break;
-            case UPDATE_COUNTS:
-                handleUpdateCounts(message);
-                break;
-            case FINALIZE_UPDATE:
-                handleFinalizeUpdate(message);
-                break;
-            default:
-                throw new RuntimeException("Unknown message received: " + message);
-        }
-        return true;
+        mUpdateDbProgress = new UpdateDbProgress();
+        beginUpdate();
+        return mUpdateDbProgress;
     }
 
     private final ApiHttpClient.Callback<JSONArray> TRACK_DATA_CALLBACK = new ApiHttpClient.Callback<JSONArray>() {
         @Override
         public void onSuccess(JSONArray data) {
             Log.v(TAG, "received data of size " + data.size());
-            Message msg = mHandler.obtainMessage(MessageType.TRACK_DATA_RECEIVED.value);
-            msg.obj = data;
-            mHandler.sendMessage(msg);
+            processTrackData(data);
         }
         @Override
         public void onFailure() {
@@ -317,9 +264,7 @@ public class DataStore extends Thread implements Handler.Callback {
         @Override
         public void onSuccess(JSONArray data) {
             Log.v(TAG, "DELETED_TRACKS_CALLBACK: json array size: " + data.size());
-            Message msg = mHandler.obtainMessage(MessageType.DELETED_TRACKS_RECEIVED.value);
-            msg.obj = data;
-            mHandler.sendMessage(msg);
+            processDeletedTracks(data);
         }
 
         @Override
@@ -328,13 +273,10 @@ public class DataStore extends Thread implements Handler.Callback {
         }
     };
 
-    private void handleUpdateDb(Message message) {
+    private void beginUpdate() {
         if (mModelCache == null) mModelCache = new HashSet<>(5000); // TODO: figure out when to delete this
 
-        if (mUpdateDbProgress != null) return;
-
-        mUpdateDbProgress = new UpdateDbProgress();
-        mUpdateDbProgress.mLastUpdatedAt = new GlobalPrefs(mContext).getLastUpdated();
+        mUpdateDbProgress.mLastUpdatedAt = new GlobalPrefs(this).getLastUpdated();
 
         mApiHttpClient.getServerTime(new ApiHttpClient.Callback<String>() {
             @Override
@@ -365,26 +307,35 @@ public class DataStore extends Thread implements Handler.Callback {
         );
 
         if (mDbHelper.countOf(Track.class, null) > 0) {
-            mHandler.sendEmptyMessage(MessageType.FETCH_DELETED_TRACKS.value);
+            fetchDeletedTracks(0, TRACK_LIMIT);
         } else {
-            Log.v(TAG, "handleUpdateDb: first run, skipped fetching deleted tracks");
-            mHandler.sendEmptyMessage(MessageType.FETCH_TRACK_DATA.value);
+            Log.v(TAG, "beginUpdate: first run, skipped fetching deleted tracks");
+            fetchTrackData(0, TRACK_LIMIT);
         }
 
     }
 
     private void fetchDeletedTracks(long offset, long limit) {
+        if (mApiCursor == null)
+            mApiCursor = new ApiCursor();
+
+        mUpdateDbProgress.mCurrentStage = UpdateDbStages.FETCH_DELETED_TRACKS;
+
          mApiHttpClient.getDeletedTracks(offset, limit,
-                 new GlobalPrefs(mContext).getLastUpdated(), DELETED_TRACKS_CALLBACK);
+                 new GlobalPrefs(this).getLastUpdated(), DELETED_TRACKS_CALLBACK);
 
         mApiCursor.mCurrentOffset = offset;
         mApiCursor.mLastLimitUsed = limit;
     }
 
     private void fetchTrackData(long offset, long limit) {
-        Log.d(TAG, offset + " " + limit);
+        if (mApiCursor == null)
+            mApiCursor = new ApiCursor();
+
+        mUpdateDbProgress.mCurrentStage = UpdateDbStages.FETCH_TRACK_DATA;
+
         mApiHttpClient.getTracks(offset, limit,
-                new GlobalPrefs(mContext).getLastUpdated(), TRACK_DATA_CALLBACK);
+                new GlobalPrefs(this).getLastUpdated(), TRACK_DATA_CALLBACK);
 
         mApiCursor.mCurrentOffset = offset;
         mApiCursor.mLastLimitUsed = limit;
@@ -397,13 +348,7 @@ public class DataStore extends Thread implements Handler.Callback {
         return false;
     }
 
-    private void handleFetchDeletedTracks(Message message) {
-        mApiCursor = new ApiCursor();
-        fetchDeletedTracks(0, TRACK_LIMIT);
-    }
-
-    private void handleDeletedTracksReceived(Message message) {
-        JSONArray data = (JSONArray)message.obj;
+    private void processDeletedTracks(JSONArray data) {
         List<String> uuids = new ArrayList<>();
         for (Object o : data) uuids.add((String)o);
 
@@ -411,7 +356,7 @@ public class DataStore extends Thread implements Handler.Callback {
 
         if (data.size() < mApiCursor.mLastLimitUsed) {
             mApiCursor = null;
-            mHandler.sendEmptyMessage(MessageType.FETCH_TRACK_DATA.value);
+            fetchTrackData(0, TRACK_LIMIT);
         } else {
             fetchDeletedTracks(mApiCursor.mCurrentOffset + data.size(), TRACK_LIMIT);
         }
@@ -426,7 +371,9 @@ public class DataStore extends Thread implements Handler.Callback {
         mDbHelper.deleteIds(clazz, uuids);
     }
 
-    private void handleCleanupOrphanedRelationships(Message message) {
+    private void cleanupOrphanedRelationship() {
+        mUpdateDbProgress.mCurrentStage = UpdateDbStages.CLEANUP_ORPHANED_RELATIONSHIPS;
+
         deleteOrphanedObjects(TrackArtist.class);
         deleteOrphanedObjects(Genre.class);
         deleteOrphanedObjects(Disc.class);
@@ -434,13 +381,7 @@ public class DataStore extends Thread implements Handler.Callback {
         deleteOrphanedObjects(AlbumArtist.class);
     }
 
-    private void handleFetchTrackData(Message message) {
-        mApiCursor = new ApiCursor();
-        fetchTrackData(0, TRACK_LIMIT);
-    }
-
-    private void handleTrackDataReceived(Message message) {
-        JSONArray data = (JSONArray)message.obj;
+    private void processTrackData(JSONArray data) {
 
         final List<Track> tracks = JsonTrackArrayParser.getTracks(data);
         final int tracksSize = tracks.size();
@@ -506,10 +447,10 @@ public class DataStore extends Thread implements Handler.Callback {
 
         if (tracksSize < mApiCursor.mLastLimitUsed) {
             mApiCursor = null;
-            mHandler.sendEmptyMessage(MessageType.CLEANUP_ORPHANED_RELATIONSHIPS.value);
-            mHandler.sendEmptyMessage(MessageType.UPDATE_COUNTS.value);
-            mHandler.sendEmptyMessage(MessageType.ASSOCIATE_IMAGES.value);
-            mHandler.sendEmptyMessage(MessageType.FINALIZE_UPDATE.value);
+            cleanupOrphanedRelationship();
+            updateCounts();
+            associateImagesToModels();
+            finishUpdate();
         } else {
             fetchTrackData(mApiCursor.mCurrentOffset + tracksSize, TRACK_LIMIT);
         }
@@ -530,8 +471,10 @@ public class DataStore extends Thread implements Handler.Callback {
         }
     }
 
-    private void handleAssociateImages(Message message) {
-        Log.v(TAG, "handleAssociateImages");
+    private void associateImagesToModels() {
+        Log.v(TAG, "associateImagesToModels");
+        mUpdateDbProgress.mCurrentStage = UpdateDbStages.ASSOCIATE_IMAGES;
+
         Map<Class, String> classColumnMap = new HashMap<>();
         classColumnMap.put(AlbumArtist.class, AlbumArtist.COLUMN_IMAGE);
         classColumnMap.put(Album.class, Album.COLUMN_IMAGE);
@@ -567,7 +510,9 @@ public class DataStore extends Thread implements Handler.Callback {
         });
     }
 
-    private void handleUpdateCounts(Message message) {
+    private void updateCounts() {
+        mUpdateDbProgress.mCurrentStage = UpdateDbStages.UPDATE_COUNTS;
+
         mDbHelper.transaction(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
@@ -611,13 +556,14 @@ public class DataStore extends Thread implements Handler.Callback {
         });
     }
 
-    private void handleFinalizeUpdate(Message message) {
-        Log.d(TAG, "handleFinalizeUpdate");
+    private void finishUpdate() {
+        Log.d(TAG, "finishUpdate");
 
         if (mUpdateDbProgress.mServerTime != null) {
-            new GlobalPrefs(mContext).setLastUpdated(mUpdateDbProgress.mServerTime);
+            new GlobalPrefs(this).setLastUpdated(mUpdateDbProgress.mServerTime);
         }
 
+        mUpdateDbProgress.mCurrentStage = UpdateDbStages.UPDATE_COMPLETE;
         mUpdateDbProgress = null;
         Log.d(TAG, "update complete");
         notifyObserver();
@@ -625,25 +571,21 @@ public class DataStore extends Thread implements Handler.Callback {
 
     private class DatabaseHelper extends OrmLiteSqliteOpenHelper {
         private Map<Class, Dao> mDaoMap;
-        private ThreadPoolExecutor mExecutor;
+        private final Class[] DAO_CLAZZES = { Track.class, Genre.class, Disc.class, Album.class,
+                TrackArtist.class, AlbumArtist.class, Image.class, TrackImage.class};
 
         public DatabaseHelper(Context context) {
             super(context, "kanihi.sqlite", null, 1);
             setWriteAheadLoggingEnabled(true);
 
             mDaoMap = new ConcurrentHashMap<>();
-            mExecutor = new ThreadPoolExecutor(
-                    4, 10, 5, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(20));
         }
 
         @Override
         public void onCreate(SQLiteDatabase db, ConnectionSource connectionSource) {
             Log.v(TAG, "onCreate");
             try {
-                Class[] clazzes = { Track.class, Genre.class, Disc.class, Album.class,
-                        TrackArtist.class, AlbumArtist.class, Image.class, TrackImage.class};
-
-                for (Class clazz : clazzes) {
+                for (Class clazz : DAO_CLAZZES) {
                     TableUtils.createTable(connectionSource, clazz);
                 }
             } catch (SQLException e) {
