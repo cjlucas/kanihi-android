@@ -5,7 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 
 import com.j256.ormlite.android.apptools.OrmLiteSqliteOpenHelper;
@@ -45,13 +48,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DataService extends Service {
     private static final String TAG = "DataService";
-    private static final int TRACK_LIMIT = 500;
+    private static final int TRACK_LIMIT = 2;
 
     private ApiHttpClient mApiHttpClient;
     private DatabaseHelper mDbHelper;
     private HashSet<Object> mModelCache;
     private UpdateDbProgress mUpdateDbProgress;
-    private ApiCursor mApiCursor;
     private Observer mObserver;
     private IBinder mBinder = new LocalBinder();
 
@@ -67,6 +69,30 @@ public class DataService extends Service {
         public String mServerTime; // at start of update
     }
 
+    public enum MessageTypes {
+        BEGIN_UPDATE(0),
+        FETCH_DELETED_TRACKS(1),
+        DELETED_TRACKS_RECEIVED(2),
+        CLEANUP_ORPHANED_RELATIONSHIPS(3),
+        FETCH_TRACK_DATA(4),
+        TRACK_DATA_RECEIVED(5),
+        ASSOCIATES_IMAGES(6),
+        UPDATE_COUNTS(7),
+        FINISH_UPDATE(8);
+
+        private int value;
+
+        MessageTypes(int value) {
+            this.value = value;
+        }
+
+        public static MessageTypes forValue(int value) {
+            for (MessageTypes type : MessageTypes.values())
+                if (type.value == value) return type;
+            return null;
+        }
+    }
+
     enum UpdateDbStages {
         FETCH_DELETED_TRACKS,
         CLEANUP_ORPHANED_RELATIONSHIPS,
@@ -80,11 +106,6 @@ public class DataService extends Service {
         public DataService getService () {
             return DataService.this;
         }
-    }
-
-    private class ApiCursor {
-        public long mCurrentOffset;
-        public long mLastLimitUsed;
     }
 
     @Override
@@ -239,106 +260,18 @@ public class DataService extends Service {
     }
 
     public UpdateDbProgress update() {
-        if (mUpdateDbProgress != null)
+        if (mUpdateDbProgress != null) {
             return mUpdateDbProgress;
+        }
 
         mUpdateDbProgress = new UpdateDbProgress();
-        beginUpdate();
+        new UpdateDbThread(mUpdateDbProgress).start();
         return mUpdateDbProgress;
     }
 
-    private final ApiHttpClient.Callback<JSONArray> TRACK_DATA_CALLBACK = new ApiHttpClient.Callback<JSONArray>() {
-        @Override
-        public void onSuccess(JSONArray data) {
-            Log.v(TAG, "received data of size " + data.size());
-            processTrackData(data);
-        }
-        @Override
-        public void onFailure() {
-            Log.e(TAG, "failure with ApiHttpClient.getTracks");
-        }
-    };
-
-    private final ApiHttpClient.Callback<JSONArray> DELETED_TRACKS_CALLBACK
-           = new ApiHttpClient.Callback<JSONArray>() {
-        @Override
-        public void onSuccess(JSONArray data) {
-            Log.v(TAG, "DELETED_TRACKS_CALLBACK: json array size: " + data.size());
-            processDeletedTracks(data);
-        }
-
-        @Override
-        public void onFailure() {
-            Log.e(TAG, "ApiHttpClient.fetchDeletedTracks failed");
-        }
-    };
-
-    private void beginUpdate() {
-        if (mModelCache == null) mModelCache = new HashSet<>(5000); // TODO: figure out when to delete this
-
-        mUpdateDbProgress.mLastUpdatedAt = new GlobalPrefs(this).getLastUpdated();
-
-        mApiHttpClient.getServerTime(new ApiHttpClient.Callback<String>() {
-            @Override
-            public void onSuccess(String serverTime) {
-                Log.v(TAG, "Got server time: " + serverTime);
-                mUpdateDbProgress.mServerTime = serverTime;
-            }
-
-            @Override
-            public void onFailure() {
-                Log.e(TAG, "error with getServerTime");
-            }
-        });
-
-        mApiHttpClient.getTrackCount(mUpdateDbProgress.mLastUpdatedAt,
-                new ApiHttpClient.Callback<Integer>() {
-                    @Override
-                    public void onSuccess(Integer totalTracks) {
-                        Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
-                        mUpdateDbProgress.mTotalTracks = totalTracks;
-                    }
-
-                    @Override
-                    public void onFailure() {
-                        Log.e(TAG, "getTrackCount failed");
-                    }
-                }
-        );
-
-        if (mDbHelper.countOf(Track.class, null) > 0) {
-            fetchDeletedTracks(0, TRACK_LIMIT);
-        } else {
-            Log.v(TAG, "beginUpdate: first run, skipped fetching deleted tracks");
-            fetchTrackData(0, TRACK_LIMIT);
-        }
-
-    }
-
-    private void fetchDeletedTracks(long offset, long limit) {
-        if (mApiCursor == null)
-            mApiCursor = new ApiCursor();
-
-        mUpdateDbProgress.mCurrentStage = UpdateDbStages.FETCH_DELETED_TRACKS;
-
-         mApiHttpClient.getDeletedTracks(offset, limit,
-                 new GlobalPrefs(this).getLastUpdated(), DELETED_TRACKS_CALLBACK);
-
-        mApiCursor.mCurrentOffset = offset;
-        mApiCursor.mLastLimitUsed = limit;
-    }
-
-    private void fetchTrackData(long offset, long limit) {
-        if (mApiCursor == null)
-            mApiCursor = new ApiCursor();
-
-        mUpdateDbProgress.mCurrentStage = UpdateDbStages.FETCH_TRACK_DATA;
-
-        mApiHttpClient.getTracks(offset, limit,
-                new GlobalPrefs(this).getLastUpdated(), TRACK_DATA_CALLBACK);
-
-        mApiCursor.mCurrentOffset = offset;
-        mApiCursor.mLastLimitUsed = limit;
+    private void onUpdateComplete() {
+        mUpdateDbProgress = null;
+        notifyObserver();
     }
 
     private <T> boolean isInCache(T object) {
@@ -348,19 +281,6 @@ public class DataService extends Service {
         return false;
     }
 
-    private void processDeletedTracks(JSONArray data) {
-        List<String> uuids = new ArrayList<>();
-        for (Object o : data) uuids.add((String)o);
-
-        mDbHelper.deleteIds(Track.class, uuids);
-
-        if (data.size() < mApiCursor.mLastLimitUsed) {
-            mApiCursor = null;
-            fetchTrackData(0, TRACK_LIMIT);
-        } else {
-            fetchDeletedTracks(mApiCursor.mCurrentOffset + data.size(), TRACK_LIMIT);
-        }
-    }
 
     private <T extends UniqueModel> void deleteOrphanedObjects(Class<T> clazz) {
         List<String> uuids = new ArrayList<>();
@@ -369,91 +289,6 @@ public class DataService extends Service {
                 uuids.add(object.getUuid());
         }
         mDbHelper.deleteIds(clazz, uuids);
-    }
-
-    private void cleanupOrphanedRelationship() {
-        mUpdateDbProgress.mCurrentStage = UpdateDbStages.CLEANUP_ORPHANED_RELATIONSHIPS;
-
-        deleteOrphanedObjects(TrackArtist.class);
-        deleteOrphanedObjects(Genre.class);
-        deleteOrphanedObjects(Disc.class);
-        deleteOrphanedObjects(Album.class);
-        deleteOrphanedObjects(AlbumArtist.class);
-    }
-
-    private void processTrackData(JSONArray data) {
-
-        final List<Track> tracks = JsonTrackArrayParser.getTracks(data);
-        final int tracksSize = tracks.size();
-        final Map<String, List<Image>> trackImages = JsonTrackArrayParser.getTrackImages(data);
-        mDbHelper.transaction(new Callable<Void>() {
-            @Override
-            public Void call() throws Exception {
-                for (Track track : tracks) {
-                    mUpdateDbProgress.mCurrentTrack++;
-                    Genre genre = track.getGenre();
-                    if (genre != null && !isInCache(genre.getUuid())) {
-                        mDbHelper.createOrUpdate(Genre.class, genre);
-                    }
-
-                    TrackArtist trackArtist = track.getTrackArtist();
-                    if (trackArtist != null && !isInCache(trackArtist.getUuid())) {
-                        mDbHelper.createOrUpdate(TrackArtist.class, trackArtist);
-                    }
-
-                    Disc disc = track.getDisc();
-                    if (disc != null && !isInCache(disc.getUuid())) {
-                        mDbHelper.createOrUpdate(Disc.class, disc);
-
-                        Album album = disc.getAlbum();
-                        if (album != null && !isInCache(album.getUuid())) {
-                            mDbHelper.createOrUpdate(Album.class, album);
-
-                            AlbumArtist albumArtist = album.getAlbumArtist();
-                            if (albumArtist != null && !isInCache(albumArtist.getUuid())) {
-                                mDbHelper.createOrUpdate(AlbumArtist.class, albumArtist);
-                            }
-                        }
-                    }
-
-                    mDbHelper.createOrUpdate(Track.class, track);
-//                    mDbHelper.getTrackDao().create(track);
-                }
-
-                for (String trackId : trackImages.keySet()) {
-                    for (Image image : trackImages.get(trackId)) {
-                        mDbHelper.createOrUpdate(Image.class, image);
-
-                        // skip if track-image entry already exists
-                        Where<TrackImage, String> where = mDbHelper.where(TrackImage.class);
-                        where.eq(TrackImage.COLUMN_TRACK_ID, trackId)
-                                .eq(TrackImage.COLUMN_IMAGE_ID, image.getId())
-                                .and(2 /* number of clauses added */);
-                        if (mDbHelper.countOf(TrackImage.class, where) > 0) continue;
-
-                        TrackImage trackImage = new TrackImage();
-                        trackImage.setTrackId(trackId);
-                        trackImage.setImageId(image.getId());
-                        mDbHelper.create(TrackImage.class, trackImage);
-                    }
-                }
-
-                tracks.clear();
-                trackImages.clear();
-
-                return null;
-            }
-        });
-
-        if (tracksSize < mApiCursor.mLastLimitUsed) {
-            mApiCursor = null;
-            cleanupOrphanedRelationship();
-            updateCounts();
-            associateImagesToModels();
-            finishUpdate();
-        } else {
-            fetchTrackData(mApiCursor.mCurrentOffset + tracksSize, TRACK_LIMIT);
-        }
     }
 
     private List<Image> getImages(Iterable<Track> tracks) {
@@ -468,20 +303,6 @@ public class DataService extends Service {
             return mDbHelper.where(Image.class).in(Image.COLUMN_ID, trackImageQb).query();
         } catch (SQLException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private void associateImagesToModels() {
-        Log.v(TAG, "associateImagesToModels");
-        mUpdateDbProgress.mCurrentStage = UpdateDbStages.ASSOCIATE_IMAGES;
-
-        Map<Class, String> classColumnMap = new HashMap<>();
-        classColumnMap.put(AlbumArtist.class, AlbumArtist.COLUMN_IMAGE);
-        classColumnMap.put(Album.class, Album.COLUMN_IMAGE);
-        classColumnMap.put(Genre.class, Genre.COLUMN_IMAGE);
-
-        for (Class clazz : classColumnMap.keySet()) {
-            fillMissingAssociatedImages(clazz, classColumnMap.get(clazz));
         }
     }
 
@@ -508,65 +329,6 @@ public class DataService extends Service {
                 return null;
             }
         });
-    }
-
-    private void updateCounts() {
-        mUpdateDbProgress.mCurrentStage = UpdateDbStages.UPDATE_COUNTS;
-
-        mDbHelper.transaction(new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-                Dao<Genre, String> genreDao = mDbHelper.dao(Genre.class);
-                for (Genre genre : genreDao) {
-                    genre.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(genre)));
-
-                    genreDao.update(genre);
-                }
-
-                Dao<Disc, String> discDao = mDbHelper.dao(Disc.class);
-                for (Disc disc : discDao) {
-                    disc.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(disc)));
-
-                    discDao.update(disc);
-                }
-
-                Dao<Album, String> albumDao = mDbHelper.dao(Album.class);
-                for (Album album : albumDao) {
-                    album.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(album)));
-
-                    albumDao.update(album);
-                }
-
-                Dao<AlbumArtist, String> albumArtistDao = mDbHelper.dao(AlbumArtist.class);
-                for (AlbumArtist artist : albumArtistDao) {
-                    artist.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(artist)));
-                    artist.setAlbumCount(artist.getAlbums().size());
-
-                    albumArtistDao.update(artist);
-                }
-
-                Dao<TrackArtist, String> trackArtistDao = mDbHelper.dao(TrackArtist.class);
-                for (TrackArtist artist : mDbHelper.dao(TrackArtist.class)) {
-                    artist.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(artist)));
-
-                    trackArtistDao.update(artist);
-                }
-                return null;
-            }
-        });
-    }
-
-    private void finishUpdate() {
-        Log.d(TAG, "finishUpdate");
-
-        if (mUpdateDbProgress.mServerTime != null) {
-            new GlobalPrefs(this).setLastUpdated(mUpdateDbProgress.mServerTime);
-        }
-
-        mUpdateDbProgress.mCurrentStage = UpdateDbStages.UPDATE_COMPLETE;
-        mUpdateDbProgress = null;
-        Log.d(TAG, "update complete");
-        notifyObserver();
     }
 
     private class DatabaseHelper extends OrmLiteSqliteOpenHelper {
@@ -685,6 +447,354 @@ public class DataService extends Service {
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    private class UpdateDbThread extends Thread implements Handler.Callback {
+        private Handler mHandler;
+        private UpdateDbProgress mUpdateDbProgress;
+        private ApiCursor mApiCursor;
+
+        private class ApiCursor {
+            public long mCurrentOffset;
+            public long mLastLimitUsed;
+        }
+
+        private final ApiHttpClient.Callback<JSONArray> TRACK_DATA_CALLBACK = new ApiHttpClient.Callback<JSONArray>() {
+            @Override
+            public void onSuccess(JSONArray data) {
+                Log.v(TAG, "received data of size " + data.size());
+                Message msg = obtainMessage(MessageTypes.TRACK_DATA_RECEIVED);
+                msg.obj = data;
+                mHandler.sendMessage(msg);
+            }
+            @Override
+            public void onFailure() {
+                Log.e(TAG, "failure with ApiHttpClient.getTracks");
+            }
+        };
+
+        private final ApiHttpClient.Callback<JSONArray> DELETED_TRACKS_CALLBACK
+                = new ApiHttpClient.Callback<JSONArray>() {
+            @Override
+            public void onSuccess(JSONArray data) {
+                Log.v(TAG, "DELETED_TRACKS_CALLBACK: json array size: " + data.size());
+                Message msg = obtainMessage(MessageTypes.DELETED_TRACKS_RECEIVED);
+                msg.obj = data;
+                mHandler.sendMessage(msg);
+            }
+
+            @Override
+            public void onFailure() {
+                Log.e(TAG, "ApiHttpClient.fetchDeletedTracks failed");
+            }
+        };
+
+        public UpdateDbThread(UpdateDbProgress dbProgress) {
+            mUpdateDbProgress = dbProgress;
+        }
+
+        private void sendEmptyMessage(MessageTypes messageType) {
+            mHandler.sendEmptyMessage(messageType.value);
+        }
+
+        private Message obtainMessage(MessageTypes messageType) {
+            return mHandler.obtainMessage(messageType.value);
+        }
+
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (MessageTypes.forValue(msg.what)) {
+                case BEGIN_UPDATE:
+                    handleBeginUpdate(msg);
+                    break;
+                case FETCH_DELETED_TRACKS:
+                    handleFetchDeletedTracks(msg);
+                    break;
+                case CLEANUP_ORPHANED_RELATIONSHIPS:
+                    handleCleanupOrphanedRelationships(msg);
+                    break;
+                case DELETED_TRACKS_RECEIVED:
+                    handleDeletedTracksReceived(msg);
+                    break;
+                case FETCH_TRACK_DATA:
+                    handleFetchTrackData(msg);
+                    break;
+                case TRACK_DATA_RECEIVED:
+                    handleTrackDataReceived(msg);
+                    break;
+                case ASSOCIATES_IMAGES:
+                    handleAssociateImages(msg);
+                    break;
+                case UPDATE_COUNTS:
+                    handleUpdateCounts(msg);
+                    break;
+                case FINISH_UPDATE:
+                    handleFinishUpdate();
+                    break;
+                default:
+                    break;
+            }
+            return true;
+        }
+
+        private void handleBeginUpdate(Message message) {
+            if (mModelCache == null) mModelCache = new HashSet<>(5000); // TODO: figure out when to delete this
+
+            mUpdateDbProgress.mLastUpdatedAt = new GlobalPrefs(DataService.this).getLastUpdated();
+
+            mApiHttpClient.getServerTime(new ApiHttpClient.Callback<String>() {
+                @Override
+                public void onSuccess(String serverTime) {
+                    Log.v(TAG, "Got server time: " + serverTime);
+                    mUpdateDbProgress.mServerTime = serverTime;
+                }
+
+                @Override
+                public void onFailure() {
+                    Log.e(TAG, "error with getServerTime");
+                }
+            });
+
+            mApiHttpClient.getTrackCount(mUpdateDbProgress.mLastUpdatedAt,
+                    new ApiHttpClient.Callback<Integer>() {
+                        @Override
+                        public void onSuccess(Integer totalTracks) {
+                            Log.i(TAG, "getTrackCount callback returned totalTracks = " + totalTracks);
+                            mUpdateDbProgress.mTotalTracks = totalTracks;
+                        }
+
+                        @Override
+                        public void onFailure() {
+                            Log.e(TAG, "getTrackCount failed");
+                        }
+                    }
+            );
+
+            if (mDbHelper.countOf(Track.class, null) > 0) {
+                fetchDeletedTracks(0, TRACK_LIMIT);
+            } else {
+                Log.v(TAG, "handleBeginUpdate: first run, skipped fetching deleted tracks");
+                fetchTrackData(0, TRACK_LIMIT);
+            }
+
+        }
+
+        private void handleFetchDeletedTracks(Message message) {
+            fetchDeletedTracks(0, TRACK_LIMIT);
+        }
+
+        private void handleDeletedTracksReceived(Message message) {
+            JSONArray data = (JSONArray)message.obj;
+            List<String> uuids = new ArrayList<>();
+            for (Object o : data) uuids.add((String)o);
+
+            mDbHelper.deleteIds(Track.class, uuids);
+
+            if (data.size() < mApiCursor.mLastLimitUsed) {
+                mApiCursor = null;
+                fetchTrackData(0, TRACK_LIMIT);
+            } else {
+                fetchDeletedTracks(mApiCursor.mCurrentOffset + data.size(), TRACK_LIMIT);
+            }
+        }
+        private void handleCleanupOrphanedRelationships(Message message) {
+            mUpdateDbProgress.mCurrentStage = UpdateDbStages.CLEANUP_ORPHANED_RELATIONSHIPS;
+
+            deleteOrphanedObjects(TrackArtist.class);
+            deleteOrphanedObjects(Genre.class);
+            deleteOrphanedObjects(Disc.class);
+            deleteOrphanedObjects(Album.class);
+            deleteOrphanedObjects(AlbumArtist.class);
+        }
+
+        private void handleFetchTrackData(Message message) {
+            fetchTrackData(0, TRACK_LIMIT);
+        }
+
+        private void handleTrackDataReceived(Message message) {
+            JSONArray data = (JSONArray)message.obj;
+            final List<Track> tracks = JsonTrackArrayParser.getTracks(data);
+            final int tracksSize = tracks.size();
+            final Map<String, List<Image>> trackImages = JsonTrackArrayParser.getTrackImages(data);
+            mDbHelper.transaction(new Callable<Void>() {
+                @Override
+                public Void call() throws Exception {
+                    for (Track track : tracks) {
+                        mUpdateDbProgress.mCurrentTrack++;
+                        Genre genre = track.getGenre();
+                        if (genre != null && !isInCache(genre.getUuid())) {
+                            mDbHelper.createOrUpdate(Genre.class, genre);
+                        }
+
+                        TrackArtist trackArtist = track.getTrackArtist();
+                        if (trackArtist != null && !isInCache(trackArtist.getUuid())) {
+                            mDbHelper.createOrUpdate(TrackArtist.class, trackArtist);
+                        }
+
+                        Disc disc = track.getDisc();
+                        if (disc != null && !isInCache(disc.getUuid())) {
+                            mDbHelper.createOrUpdate(Disc.class, disc);
+
+                            Album album = disc.getAlbum();
+                            if (album != null && !isInCache(album.getUuid())) {
+                                mDbHelper.createOrUpdate(Album.class, album);
+
+                                AlbumArtist albumArtist = album.getAlbumArtist();
+                                if (albumArtist != null && !isInCache(albumArtist.getUuid())) {
+                                    mDbHelper.createOrUpdate(AlbumArtist.class, albumArtist);
+                                }
+                            }
+                        }
+
+                        mDbHelper.createOrUpdate(Track.class, track);
+//                    mDbHelper.getTrackDao().create(track);
+                    }
+
+                    for (String trackId : trackImages.keySet()) {
+                        for (Image image : trackImages.get(trackId)) {
+                            mDbHelper.createOrUpdate(Image.class, image);
+
+                            // skip if track-image entry already exists
+                            Where<TrackImage, String> where = mDbHelper.where(TrackImage.class);
+                            where.eq(TrackImage.COLUMN_TRACK_ID, trackId)
+                                    .eq(TrackImage.COLUMN_IMAGE_ID, image.getId())
+                                    .and(2 /* number of clauses added */);
+                            if (mDbHelper.countOf(TrackImage.class, where) > 0) continue;
+
+                            TrackImage trackImage = new TrackImage();
+                            trackImage.setTrackId(trackId);
+                            trackImage.setImageId(image.getId());
+                            mDbHelper.create(TrackImage.class, trackImage);
+                        }
+                    }
+
+                    tracks.clear();
+                    trackImages.clear();
+
+                    return null;
+                }
+            });
+
+            if (tracksSize < mApiCursor.mLastLimitUsed) {
+                mApiCursor = null;
+                sendEmptyMessage(MessageTypes.CLEANUP_ORPHANED_RELATIONSHIPS);
+                sendEmptyMessage(MessageTypes.UPDATE_COUNTS);
+                sendEmptyMessage(MessageTypes.ASSOCIATES_IMAGES);
+                sendEmptyMessage(MessageTypes.FINISH_UPDATE);
+            } else {
+                fetchTrackData(mApiCursor.mCurrentOffset + tracksSize, TRACK_LIMIT);
+            }
+        }
+
+        private void handleAssociateImages(Message message) {
+            Log.v(TAG, "handleAssociateImages");
+            mUpdateDbProgress.mCurrentStage = UpdateDbStages.ASSOCIATE_IMAGES;
+
+            Map<Class, String> classColumnMap = new HashMap<>();
+            classColumnMap.put(AlbumArtist.class, AlbumArtist.COLUMN_IMAGE);
+            classColumnMap.put(Album.class, Album.COLUMN_IMAGE);
+            classColumnMap.put(Genre.class, Genre.COLUMN_IMAGE);
+
+            for (Class clazz : classColumnMap.keySet()) {
+                fillMissingAssociatedImages(clazz, classColumnMap.get(clazz));
+            }
+        }
+
+        private void handleUpdateCounts(Message message) {
+            mUpdateDbProgress.mCurrentStage = UpdateDbStages.UPDATE_COUNTS;
+
+            mDbHelper.transaction(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    Dao<Genre, String> genreDao = mDbHelper.dao(Genre.class);
+                    for (Genre genre : genreDao) {
+                        genre.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(genre)));
+
+                        genreDao.update(genre);
+                    }
+
+                    Dao<Disc, String> discDao = mDbHelper.dao(Disc.class);
+                    for (Disc disc : discDao) {
+                        disc.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(disc)));
+
+                        discDao.update(disc);
+                    }
+
+                    Dao<Album, String> albumDao = mDbHelper.dao(Album.class);
+                    for (Album album : albumDao) {
+                        album.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(album)));
+
+                        albumDao.update(album);
+                    }
+
+                    Dao<AlbumArtist, String> albumArtistDao = mDbHelper.dao(AlbumArtist.class);
+                    for (AlbumArtist artist : albumArtistDao) {
+                        artist.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(artist)));
+                        artist.setAlbumCount(artist.getAlbums().size());
+
+                        albumArtistDao.update(artist);
+                    }
+
+                    Dao<TrackArtist, String> trackArtistDao = mDbHelper.dao(TrackArtist.class);
+                    for (TrackArtist artist : mDbHelper.dao(TrackArtist.class)) {
+                        artist.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(artist)));
+
+                        trackArtistDao.update(artist);
+                    }
+                    return null;
+                }
+            });
+        }
+
+        private void handleFinishUpdate() {
+            Log.d(TAG, "handleFinishUpdate");
+
+            if (mUpdateDbProgress.mServerTime != null) {
+                new GlobalPrefs(DataService.this).setLastUpdated(mUpdateDbProgress.mServerTime);
+            }
+
+            mUpdateDbProgress.mCurrentStage = UpdateDbStages.UPDATE_COMPLETE;
+            mUpdateDbProgress = null;
+            Log.d(TAG, "update complete");
+            onUpdateComplete();
+        }
+
+        private void fetchDeletedTracks(long offset, long limit) {
+            if (mApiCursor == null)
+                mApiCursor = new ApiCursor();
+
+            mUpdateDbProgress.mCurrentStage = UpdateDbStages.FETCH_DELETED_TRACKS;
+
+            mApiHttpClient.getDeletedTracks(offset, limit,
+                    new GlobalPrefs(DataService.this).getLastUpdated(), DELETED_TRACKS_CALLBACK);
+
+            mApiCursor.mCurrentOffset = offset;
+            mApiCursor.mLastLimitUsed = limit;
+        }
+
+        private void fetchTrackData(long offset, long limit) {
+            if (mApiCursor == null)
+                mApiCursor = new ApiCursor();
+
+            mUpdateDbProgress.mCurrentStage = UpdateDbStages.FETCH_TRACK_DATA;
+
+            Log.d(TAG, "here1");
+            mApiHttpClient.getTracks(offset, limit,
+                    new GlobalPrefs(DataService.this).getLastUpdated(), TRACK_DATA_CALLBACK);
+            Log.d(TAG, "here2");
+
+            mApiCursor.mCurrentOffset = offset;
+            mApiCursor.mLastLimitUsed = limit;
+        }
+
+
+        @Override
+        public void run() {
+            Looper.prepare();
+            mHandler = new Handler(this);
+            sendEmptyMessage(MessageTypes.BEGIN_UPDATE);
+            Looper.loop();
         }
     }
 }
