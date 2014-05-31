@@ -150,84 +150,79 @@ public class DataService extends Service {
             mObserver.onDatabaseUpdated();
     }
 
-    private Where<Track, String> tracksWhere(TrackArtist artist){
+    /**
+     *
+     * @param ancestorClazz the class of the ancestor
+     * @param ancestor either the UUID of the ancestor, or an instance of ancestorClazz
+     * @return the Where object
+     */
+    private Where<Track, String> tracksWhere(Class ancestorClazz, Object ancestor) {
+        Where<Track, String> where = mDbHelper.where(Track.class);
         try {
-            return mDbHelper.where(Track.class).in(Track.COLUMN_TRACK_ARTIST, artist);
+            if (ancestorClazz == TrackArtist.class) {
+                return where.eq(Track.COLUMN_TRACK_ARTIST, ancestor);
+
+            } else if (ancestorClazz == Disc.class) {
+                return where.eq(Track.COLUMN_DISC, ancestor);
+
+            } else if (ancestorClazz == Genre.class) {
+                return where.eq(Track.COLUMN_DISC, ancestor);
+
+            } else if (ancestorClazz == Album.class) {
+                QueryBuilder<Disc, String> discsQb = mDbHelper.qb(Disc.class);
+                Where<Disc, String> discsWhere = discsQb.where().eq(Disc.COLUMN_ALBUM, ancestor);
+                discsQb.selectColumns(Disc.COLUMN_UUID);
+                discsQb.setWhere(discsWhere);
+
+                return where.in(Track.COLUMN_DISC, discsQb);
+
+            } else if (ancestorClazz == AlbumArtist.class) {
+                // get the albums from the album artist
+                QueryBuilder<Album, String> albumsQb = mDbHelper.qb(Album.class);
+                Where<Album, String> albumsWhere =
+                        albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, ancestor);
+                albumsQb.selectColumns(Album.COLUMN_UUID);
+                albumsQb.setWhere(albumsWhere);
+
+                // get the discs from the albums
+                QueryBuilder<Disc, String> discsQb = mDbHelper.qb(Disc.class);
+                Where<Disc, String> discsWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
+                discsQb.selectColumns(Disc.COLUMN_UUID);
+                discsQb.setWhere(discsWhere);
+
+                // get the tracks from the discs
+                return where.in(Track.COLUMN_DISC, discsQb);
+
+            } else {
+                throw new RuntimeException("Unexpected ancestor class received");
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Where<Track, String> tracksWhere(Disc disc) {
+    /**
+     * @see #tracksWhere(Class, Object)
+     */
+    private Where<Album, String> albumsWhere(Class ancestorClazz, Object ancestor) {
+        Where<Album, String> where = mDbHelper.where(Album.class);
+
         try {
-            return mDbHelper.where(Track.class).in(Track.COLUMN_DISC, disc);
+            if (ancestorClazz == AlbumArtist.class) {
+                return where.eq(Album.COLUMN_ALBUM_ARTIST, ancestor);
+            } else {
+                throw new RuntimeException("Unexpected ancestor class received");
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Where<Track, String> tracksWhere(Genre genre) {
-        try {
-            return mDbHelper.where(Track.class).in(Track.COLUMN_GENRE, genre);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Where<Track, String> tracksWhere(Album album) {
-        try {
-            // get the discs from the album
-            QueryBuilder<Disc, String> discsQb = mDbHelper.qb(Disc.class);
-            Where<Disc, String> discsWhere = discsQb.where().eq(Disc.COLUMN_ALBUM, album);
-            discsQb.selectColumns(Disc.COLUMN_UUID);
-            discsQb.setWhere(discsWhere);
-
-            return mDbHelper.where(Track.class).in(Track.COLUMN_DISC, discsQb);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Where<Track, String> tracksWhere(AlbumArtist artist) {
-        try {
-            // get the albums from the album artist
-            QueryBuilder<Album, String> albumsQb = mDbHelper.qb(Album.class);
-            Where<Album, String> albumsWhere = albumsQb.where().eq(Album.COLUMN_ALBUM_ARTIST, artist);
-            albumsQb.selectColumns(Album.COLUMN_UUID);
-            albumsQb.setWhere(albumsWhere);
-
-            // get the discs from the albums
-            QueryBuilder<Disc, String> discsQb = mDbHelper.qb(Disc.class);
-            Where<Disc, String> discsWhere = discsQb.where().in(Disc.COLUMN_ALBUM, albumsQb);
-            discsQb.selectColumns(Disc.COLUMN_UUID);
-            discsQb.setWhere(discsWhere);
-
-            // get the tracks from the discs
-            return mDbHelper.where(Track.class).in(Track.COLUMN_DISC, discsQb);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Where<Track, String> tracksWhereForObject(Object object) {
-        if (object instanceof TrackArtist) return tracksWhere((TrackArtist) object);
-        if (object instanceof Genre) return tracksWhere((Genre) object);
-        if (object instanceof Disc) return tracksWhere((Disc) object);
-        if (object instanceof Album) return tracksWhere((Album) object);
-        if (object instanceof AlbumArtist) return tracksWhere((AlbumArtist) object);
-
-        throw new IllegalArgumentException(
-                "Unexpected class given: " + object.getClass().getName());
-    }
-
-    private <T> PreparedQuery<T> buildPreparedQuery(Class<T> clazz, String sortColumn,
-                                                    boolean sortAscending) {
-        try {
-            return mDbHelper.qb(clazz)
-                    .orderBy(sortColumn, sortAscending).prepare();
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not prepare query");
-        }
+    /**
+     * @see #tracksWhere(Class, Object)
+     */
+    private Where<AlbumArtist, String> albumArtistsWhere(Class ancestorClazz, Object ancestor) {
+        return null;
     }
 
     public <T> CloseableIterator<T> executePreparedQuery(Class<T> clazz,
@@ -239,24 +234,23 @@ public class DataService extends Service {
         }
     }
 
-    private List<Track> getTracksSync(Object object) {
-        try {
-            return tracksWhereForObject(object).query();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+    public PreparedQuery<Track> getTracksQuery(Class ancestorClazz, String ancestorUuid,
+                                               String sortColumn, boolean sortAscending) {
+        return mDbHelper.preparedQuery(Track.class,
+                tracksWhere(ancestorClazz, ancestorUuid), sortColumn, sortAscending);
     }
 
-    public PreparedQuery<Track> getTracksQuery(String sortColumn, boolean sortAscending) {
-        return buildPreparedQuery(Track.class, sortColumn, sortAscending);
+    public PreparedQuery<Album> getAlbumsQuery(Class ancestorClazz, String ancestorUuid,
+                                              String sortColumn, boolean sortAscending) {
+        return mDbHelper.preparedQuery(Album.class,
+                albumsWhere(ancestorClazz, ancestorUuid), sortColumn, sortAscending);
     }
 
-    public PreparedQuery<Album> getAlbumsQuery(String sortColumn, boolean sortAscending) {
-        return buildPreparedQuery(Album.class, sortColumn, sortAscending);
-    }
+    public PreparedQuery<AlbumArtist> getAlbumArtistsQuery(Class ancestorClazz, String ancestorUuid,
+                                                          String sortColumn, boolean sortAscending) {
+        return mDbHelper.preparedQuery(AlbumArtist.class,
+                albumArtistsWhere(ancestorClazz, ancestorUuid), sortColumn, sortAscending);
 
-    public PreparedQuery<AlbumArtist> getAlbumArtistsQuery(String sortColumn, boolean sortAscending) {
-        return buildPreparedQuery(AlbumArtist.class, sortColumn, sortAscending);
     }
 
     public UpdateDbProgress update() {
@@ -285,7 +279,7 @@ public class DataService extends Service {
     private <T extends UniqueModel> void deleteOrphanedObjects(Class<T> clazz) {
         List<String> uuids = new ArrayList<>();
         for (T object : mDbHelper.dao(clazz)) {
-            if (mDbHelper.countOf(Track.class, tracksWhereForObject(object)) == 0)
+            if (mDbHelper.countOf(Track.class, tracksWhere(clazz, object)) == 0)
                 uuids.add(object.getUuid());
         }
         mDbHelper.deleteIds(clazz, uuids);
@@ -316,7 +310,8 @@ public class DataService extends Service {
 
                 while (iter.hasNext()) {
                     T item = iter.next();
-                    List<Track> tracks = getTracksSync(item);
+                    List<Track> tracks =
+                            mDbHelper.query(Track.class, tracksWhere(clazz, item), null, true);
 
                     List<Image> images = getImages(tracks);
                     if (images.size() > 0) {
@@ -410,15 +405,17 @@ public class DataService extends Service {
             return qb(clazz).where();
         }
 
-        private <T> PreparedQuery<T> preparedQuery(Class<T> clazz,
-                                                   Where<T, String> where,
-                                                   String orderColumn,
-                                                   boolean ascending) throws SQLException {
+        private <T> PreparedQuery<T> preparedQuery(Class<T> clazz, Where<T, String> where,
+                                                   String sortColumn, boolean sortAscending) {
             QueryBuilder<T, String> qb = qb(clazz);
             if (where != null) qb.setWhere(where);
-            qb.orderBy(orderColumn, ascending);
+            qb.orderBy(sortColumn, sortAscending);
 
-            return qb.prepare();
+            try {
+                return qb.prepare();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public <T> List<T> query(Class<T> clazz, Where<T, String> where,
@@ -709,28 +706,32 @@ public class DataService extends Service {
                 public Object call() throws Exception {
                     Dao<Genre, String> genreDao = mDbHelper.dao(Genre.class);
                     for (Genre genre : genreDao) {
-                        genre.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(genre)));
+                        genre.setTrackCount(
+                                mDbHelper.countOf(Track.class, tracksWhere(Genre.class, genre)));
 
                         genreDao.update(genre);
                     }
 
                     Dao<Disc, String> discDao = mDbHelper.dao(Disc.class);
                     for (Disc disc : discDao) {
-                        disc.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(disc)));
+                        disc.setTrackCount(
+                                mDbHelper.countOf(Track.class, tracksWhere(Disc.class, disc)));
 
                         discDao.update(disc);
                     }
 
                     Dao<Album, String> albumDao = mDbHelper.dao(Album.class);
                     for (Album album : albumDao) {
-                        album.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(album)));
+                        album.setTrackCount(
+                                mDbHelper.countOf(Track.class, tracksWhere(Album.class, album)));
 
                         albumDao.update(album);
                     }
 
                     Dao<AlbumArtist, String> albumArtistDao = mDbHelper.dao(AlbumArtist.class);
                     for (AlbumArtist artist : albumArtistDao) {
-                        artist.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(artist)));
+                        artist.setTrackCount(
+                                mDbHelper.countOf(Track.class, tracksWhere(AlbumArtist.class, artist)));
                         artist.setAlbumCount(artist.getAlbums().size());
 
                         albumArtistDao.update(artist);
@@ -738,7 +739,8 @@ public class DataService extends Service {
 
                     Dao<TrackArtist, String> trackArtistDao = mDbHelper.dao(TrackArtist.class);
                     for (TrackArtist artist : mDbHelper.dao(TrackArtist.class)) {
-                        artist.setTrackCount(mDbHelper.countOf(Track.class, tracksWhere(artist)));
+                        artist.setTrackCount(
+                                mDbHelper.countOf(Track.class, tracksWhere(TrackArtist.class, artist)));
 
                         trackArtistDao.update(artist);
                     }

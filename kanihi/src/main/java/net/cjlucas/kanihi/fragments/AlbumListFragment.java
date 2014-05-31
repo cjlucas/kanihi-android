@@ -10,7 +10,6 @@ import android.widget.TextView;
 import com.j256.ormlite.stmt.PreparedQuery;
 
 import net.cjlucas.kanihi.R;
-import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.data.ImageStore;
 import net.cjlucas.kanihi.models.Album;
 import net.cjlucas.kanihi.models.Image;
@@ -20,21 +19,14 @@ import net.cjlucas.kanihi.models.Image;
  */
 public class AlbumListFragment extends ModelListFragment<Album> {
 
-    private ImageStore mImageStore;
-
-    public AlbumListFragment(ImageStore imageStore, DataStore dataStore) {
-        super(dataStore);
-        mImageStore = imageStore;
-    }
-
     @Override
     public Class<Album> getGenericClass() {
         return Album.class;
     }
 
     @Override
-    public PreparedQuery<Album> getDefaultQuery() {
-        return mDataStore.getAlbumsQuery(Album.COLUMN_TITLE, true);
+    public PreparedQuery<Album> getDefaultQuery(Class ancestorClazz, String ancestorUuid) {
+        return mDataService.getAlbumsQuery(ancestorClazz, ancestorUuid, Album.COLUMN_TITLE, true);
     }
 
     public View getRowView(Album album, View reusableView, ViewGroup viewGroup) {
@@ -65,6 +57,6 @@ public class AlbumListFragment extends ModelListFragment<Album> {
     public void onListItemClick(ListView l, View v, int position, long id) {
         Album album = (Album)getListAdapter().getItem(position);
 
-        blah(new SingleAlbumListFragment(mImageStore, mDataStore, album));
+        blah(new SingleAlbumListFragment(mImageStore, mDataService, album));
     }
 }

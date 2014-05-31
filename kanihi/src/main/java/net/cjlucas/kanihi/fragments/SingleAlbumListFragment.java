@@ -11,7 +11,7 @@ import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import net.cjlucas.kanihi.R;
-import net.cjlucas.kanihi.data.DataStore;
+import net.cjlucas.kanihi.data.DataService;
 import net.cjlucas.kanihi.data.ImageStore;
 import net.cjlucas.kanihi.listeners.PaddingShiftOnTouchListener;
 import net.cjlucas.kanihi.models.Album;
@@ -29,7 +29,7 @@ import java.util.Map;
  */
 public class SingleAlbumListFragment extends ListFragment {
     private ImageStore mImageStore;
-    private DataStore mDataStore;
+    private DataService mDataService;
     private Album mAlbum;
 
     private class PlaylistListAdapter extends BaseAdapter {
@@ -198,9 +198,9 @@ public class SingleAlbumListFragment extends ListFragment {
         }
     }
 
-    public SingleAlbumListFragment(ImageStore imageStore, DataStore dataStore, Album album) {
+    public SingleAlbumListFragment(ImageStore imageStore, DataService dataService, Album album) {
         mImageStore = imageStore;
-        mDataStore = dataStore;
+        mDataService = dataService;
         mAlbum = album;
     }
 

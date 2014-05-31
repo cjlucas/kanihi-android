@@ -56,8 +56,8 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
 
         mDrawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
 
-        addFragment(new ArtistListFragment(mImageStore, mDataStore));
         startService(new Intent(this, DataService.class));
+        startService(new Intent(this, ImageStore.class));
 
         bindService(new Intent(getApplicationContext(), DataService.class), new ServiceConnection() {
             @Override
@@ -78,22 +78,17 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
     private ModelListFragment fragmentForSelection(int position) {
         switch(position) {
             case 0:
-                return new ArtistListFragment(mImageStore, mDataStore);
+                return new ArtistListFragment();
             case 1:
-                return new AlbumListFragment(mImageStore, mDataStore);
+                return new AlbumListFragment();
             case 2:
-                return new TrackListFragment(mImageStore, mDataStore);
+                return new TrackListFragment();
             default:
                 throw new RuntimeException("unknown menu item selected");
         }
     }
 
     private void addFragment(ModelListFragment fragment) {
-        int token = fragment.executeDefaultQuery();
-        Bundle args = new Bundle();
-        args.putInt(ModelListFragment.ARG_TOKEN, token);
-        fragment.setArguments(args);
-
         FragmentManager fm = getFragmentManager();
         fm.beginTransaction().replace(R.id.fragment_placeholder, fragment).commit();
 

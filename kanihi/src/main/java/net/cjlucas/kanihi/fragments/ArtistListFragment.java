@@ -1,8 +1,5 @@
 package net.cjlucas.kanihi.fragments;
 
-import android.app.Activity;
-import android.app.LoaderManager;
-import android.content.Loader;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
@@ -12,30 +9,19 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.j256.ormlite.dao.CloseableIterator;
 import com.j256.ormlite.stmt.PreparedQuery;
 
 import net.cjlucas.kanihi.R;
-import net.cjlucas.kanihi.data.CloseableIteratorAsyncLoader;
-import net.cjlucas.kanihi.data.DataStore;
 import net.cjlucas.kanihi.data.ImageStore;
-import net.cjlucas.kanihi.data.adapters.ModelAdapter;
 import net.cjlucas.kanihi.models.AlbumArtist;
 import net.cjlucas.kanihi.models.Image;
-import net.cjlucas.kanihi.models.Track;
 
 /**
  * Created by chris on 3/10/14.
  */
 public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
 
-    private ImageStore mImageStore;
-
-    public ArtistListFragment(ImageStore imageStore, DataStore dataStore) {
-        super(dataStore);
-        mImageStore = imageStore;
-
-    }
+//    private ImageStore mImageStore;
 
     @Override
     public Class<AlbumArtist> getGenericClass() {
@@ -43,8 +29,9 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
     }
 
     @Override
-    public PreparedQuery<AlbumArtist> getDefaultQuery() {
-        return mDataStore.getAlbumArtistsQuery(AlbumArtist.COLUMN_NAME, true);
+    public PreparedQuery<AlbumArtist> getDefaultQuery(Class ancestorClazz, String ancestorUuid) {
+        return mDataService.getAlbumArtistsQuery(ancestorClazz, ancestorUuid,
+                AlbumArtist.COLUMN_NAME, true);
     }
 
     public View getRowView(AlbumArtist artist, View reusableView, ViewGroup viewGroup) {
@@ -59,7 +46,9 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
 
         ImageView imageView = (ImageView)view.findViewById(R.id.image_view);
         Image image = artist.getImage();
-        if (image != null) {
+        Log.d("WEEE", "" + mImageStore);
+        Log.d("WEEE", "" + image);
+        if (image != null && mImageStore != null) {
             mImageStore.loadImage(image, imageView, true /* thumbnail */,
                     new ImageStore.Callback() {
                         @Override
@@ -77,7 +66,33 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
     public void onListItemClick(ListView l, View v, int position, long id) {
         AlbumArtist artist = (AlbumArtist)getListAdapter().getItem(position);
 
-        blah(new AlbumListFragment(mImageStore, mDataStore));
+        Bundle fragmentArgs = new Bundle();
+        fragmentArgs.putSerializable(ARG_ANCESTOR_CLASS, AlbumArtist.class);
+        fragmentArgs.putString(ARG_ANCESTOR_UUID, artist.getUuid());
+
+        AlbumListFragment fragment = new AlbumListFragment();
+        fragment.setArguments(fragmentArgs);
+
+        blah(fragment);
     }
 
+//    @Override
+    public void onImageServiceConnection() {
+//        ListView listView = getListView();
+//        ListAdapter listAdapter = getListAdapter();
+//        if (listView != null && listAdapter != null) {
+//            int first = listView.getFirstVisiblePosition();
+//            int last = listView.getLastVisiblePosition();
+//            for (int i = first; i <= last; i++) {
+//                Image image = ((AlbumArtist)listAdapter.getItem(i)).getImage();
+//                mImageStore.loadImage();
+//
+//            }
+//        }
+    }
+
+//    @Override
+    public void onDataServiceConnection() {
+
+    }
 }

@@ -12,6 +12,8 @@
         <activity android:name=".fragments.TrackListFragment" />
         <activity android:name=".fragments.AlbumListFragment" />
         <activity android:name=".fragments.ArtistListFragment" />
+        <service android:name=".data.ImageStore" />
+        <service android:name=".data.DataService" />
 
         <activity
             android:name="net.cjlucas.kanihi.activities.MainNavigationActivity"
