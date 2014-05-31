@@ -157,6 +157,10 @@ public class DataService extends Service {
      * @return the Where object
      */
     private Where<Track, String> tracksWhere(Class ancestorClazz, Object ancestor) {
+        if (ancestorClazz == null) {
+            return null;
+        }
+
         Where<Track, String> where = mDbHelper.where(Track.class);
         try {
             if (ancestorClazz == TrackArtist.class) {
@@ -205,6 +209,10 @@ public class DataService extends Service {
      * @see #tracksWhere(Class, Object)
      */
     private Where<Album, String> albumsWhere(Class ancestorClazz, Object ancestor) {
+        if (ancestorClazz == null) {
+            return null;
+        }
+
         Where<Album, String> where = mDbHelper.where(Album.class);
 
         try {
@@ -311,7 +319,7 @@ public class DataService extends Service {
                 while (iter.hasNext()) {
                     T item = iter.next();
                     List<Track> tracks =
-                            mDbHelper.query(Track.class, tracksWhere(clazz, item), null, true);
+                            mDbHelper.query(Track.class, tracksWhere(clazz, item), Track.COLUMN_TITLE, true);
 
                     List<Image> images = getImages(tracks);
                     if (images.size() > 0) {
