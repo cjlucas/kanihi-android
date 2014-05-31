@@ -19,7 +19,7 @@ public class JsonArrayHttpResponseHandler extends BaseJsonHttpResponseHandler<JS
     }
 
     @Override
-    protected JSONArray parseResponse(String s) throws Throwable {
+    protected JSONArray parseResponse(String s, boolean isFailure) throws Throwable {
         return (JSONArray)JSONValue.parse(s);
     }
 }

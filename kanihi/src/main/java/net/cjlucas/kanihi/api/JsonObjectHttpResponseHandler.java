@@ -20,7 +20,7 @@ public class JsonObjectHttpResponseHandler extends BaseJsonHttpResponseHandler<J
     }
 
     @Override
-    protected JSONObject parseResponse(String s) throws Throwable {
+    protected JSONObject parseResponse(String s, boolean isFailure) throws Throwable {
         System.err.println("here: " + s);
         return (JSONObject)JSONValue.parse(s);
     }

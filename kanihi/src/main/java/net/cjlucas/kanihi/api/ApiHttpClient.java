@@ -165,11 +165,15 @@ public class ApiHttpClient {
 
         return mAsyncClient.get(null, url, headers, null, new BinaryHttpResponseHandler() {
             @Override
-            public void onSuccess(byte[] binaryData) {
+            public void onFailure(int i, Header[] headers, byte[] bytes, Throwable throwable) {
+                callback.onFailure();
+            }
+
+           @Override
+            public void onSuccess(int i, Header[] headers, byte[] binaryData) {
                 callback.onSuccess(binaryData);
             }
-        }
-        );
+        });
     }
 
     public RequestHandle getImage(String imageId, final Callback<byte[]> callback) {
