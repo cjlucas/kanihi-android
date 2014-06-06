@@ -1,7 +1,14 @@
 package net.cjlucas.kanihi.data;
 
+import android.app.Service;
 import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Binder;
+import android.os.IBinder;
 import android.util.Log;
 import android.util.LruCache;
 import android.widget.ImageView;
@@ -18,8 +25,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ImageStore {
-    private static ImageStore mSharedImageStore;
+public class ImageStore extends Service {
     private static final String LARGE_DIR = "images";
     private static final String THUMB_DIR = "thumbs";
     private static final String TAG = "ImageStore";
@@ -29,16 +35,36 @@ public class ImageStore {
     private ApiHttpClient mApiHttpClient;
     private Map<ImageView, RequestHandle> mRequestHandleMap;
     private LruCache<String, Drawable> mThumbnailCache;
+    private IBinder mBinder = new LocalBinder();
+
+    public class LocalBinder extends Binder {
+        public ImageStore getService() {
+            return ImageStore.this;
+        }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        Log.d(TAG, "onBind");
+        return mBinder;
+    }
 
     public interface Callback {
         void onImageAvailable(ImageView imageView, Drawable drawable);
     }
 
-    public ImageStore(Context context, ApiHttpClient apiHttpClient) {
-        mContext = context;
-        mApiHttpClient = apiHttpClient;
+    public interface NewCallback<T> {
+        void onImageAvailable(T image);
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
         mRequestHandleMap = new ConcurrentHashMap<>();
         mThumbnailCache = new LruCache<>(THUMBNAIL_CACHE_SIZE);
+        mApiHttpClient = new ApiHttpClient();
+        mApiHttpClient.setApiEndpoint("192.168.0.2", 8080);
 
         createDirIfNotExists(getImagesDir());
         createDirIfNotExists(getThumbsDir());
@@ -51,11 +77,11 @@ public class ImageStore {
     }
 
     private File getImagesDir() {
-        return new File(mContext.getCacheDir(), LARGE_DIR);
+        return new File(getCacheDir(), LARGE_DIR);
     }
 
     private File getThumbsDir() {
-        return new File(mContext.getCacheDir(), THUMB_DIR);
+        return new File(getCacheDir(), THUMB_DIR);
     }
 
     private File getPath(Image image, boolean thumbnail) {
@@ -79,12 +105,6 @@ public class ImageStore {
         return false;
     }
 
-    private Drawable getDrawable(File f) {
-        if (!f.exists()) throw new RuntimeException("getDrawable: File doesn't exist");
-
-        return Drawable.createFromPath(f.getAbsolutePath());
-    }
-
     private void cancelRequest(ImageView key) {
         RequestHandle req = mRequestHandleMap.get(key);
         if (req != null) {
@@ -102,10 +122,47 @@ public class ImageStore {
         }
     }
 
+    private Drawable getDrawable(File f) {
+        if (!f.exists()) throw new RuntimeException("getDrawable: File doesn't exist");
+
+        return Drawable.createFromPath(f.getAbsolutePath());
+    }
+
+    public void getBitmap(final Image image, final NewCallback<Bitmap> callback) {
+        File imagePath = getPath(image, false);
+
+        if (imagePath.exists()) {
+            callback.onImageAvailable(BitmapFactory.decodeFile(imagePath.getAbsolutePath()));
+            return;
+        }
+
+        mApiHttpClient.getImage(image.getId(), -1, new ApiHttpClient.Callback<byte[]>() {
+            @Override
+            public void onSuccess(byte[] data) {
+                writeImage(image, data, false);
+                callback.onImageAvailable(BitmapFactory.decodeByteArray(data, 0, data.length));
+            }
+
+            @Override
+            public void onFailure() {
+
+            }
+        });
+    }
+
+    public void loadImage(final Image image, final boolean thumbnail) {
+
+    }
+
     public void loadImage(final Image image, final ImageView imageView, final boolean thumbnail,
                           final Callback callback) {
         // cancel image request on this view if one is pending
         cancelRequest(imageView);
+
+        if (thumbnail && mThumbnailCache.get(image.getId()) != null) {
+            callback.onImageAvailable(imageView, mThumbnailCache.get(image.getId()));
+            return;
+        }
 
         final File imagePath = getPath(image, thumbnail);
         if (imagePath.exists()) {
@@ -117,8 +174,11 @@ public class ImageStore {
                 new ApiHttpClient.Callback<byte[]>() {
                     @Override
                     public void onSuccess(byte[] data) {
+                        Drawable drawable = new BitmapDrawable(getResources(),
+                                BitmapFactory.decodeByteArray(data, 0, data.length));
+                        mThumbnailCache.put(image.getId(), drawable);
                         writeImage(image, data, thumbnail);
-                        callback.onImageAvailable(imageView, getDrawable(imagePath));
+                        callback.onImageAvailable(imageView, drawable);
                     }
 
                     @Override

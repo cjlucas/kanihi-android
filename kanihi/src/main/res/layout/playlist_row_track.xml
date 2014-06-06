@@ -1,45 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="60dp"
     android:paddingLeft="10dp"
     android:paddingRight="10dp"
-    android:background="@color/background">
+    android:background="#fff">
 
-    <RelativeLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clickable="true"
-        android:paddingLeft="5dp"
-        android:paddingRight="5dp"
-        android:background="@color/border">
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:minWidth="30dp"
+            android:gravity="right"
+            android:paddingRight="10dp"
+            android:textStyle="bold"
+            android:id="@+id/track_number" />
+
 
         <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingBottom="0dp"
-            android:background="#000">
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical">
 
             <TextView
                 android:id="@+id/left_text"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:height="48dp"
-                android:paddingLeft="20dp"
-                android:background="#fff"/>
+                android:textSize="14sp"/>
 
             <TextView
-                android:id="@+id/right_text"
-                android:layout_width="wrap_content"
+                android:id="@+id/subtitle"
+                android:layout_below="@id/left_text"
+                android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:layout_alignRight="@id/left_text"
-                android:layout_centerVertical="true"
-                android:gravity="center_vertical"
-                android:paddingRight="20dp"/>
-            </RelativeLayout>
+                android:paddingTop="4dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textSize="12sp"
+                android:layout_alignParentBottom="false" />
+        </RelativeLayout>
 
-    </RelativeLayout>
+        </LinearLayout>
 
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#e5e5e5"
+        android:layout_alignParentBottom="true" />
 </RelativeLayout>

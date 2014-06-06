@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#e9e7e0</color>
-    <color name="border">#dedcd5</color>
+    <color name="background">#e5e5e5</color>
+    <color name="border">#d2d2d2</color>  <!-- obsolete -->
+    <color name="border_outer">#d2d2d2</color>
+    <color name="secondary_model_row">#c8c8c8</color>
+
+    <color name="list_item_border_default">#e3e3e3</color>
+    <!--<color name="list_item_border_pressed">#ff0000</color>-->
+
+    <color name="list_item_bg_default">#ffffff</color>
+    <color name="list_item_bg_pressed">#f2f2f2</color>
+    <!--<color name="list_item_bg_pressed">#fff000</color>-->
+    <color name="list_item_bg_checked">#a7d3de</color>
 </resources>

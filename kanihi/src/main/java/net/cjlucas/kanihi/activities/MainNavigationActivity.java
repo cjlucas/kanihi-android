@@ -6,6 +6,7 @@ import android.app.FragmentManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.widget.DrawerLayout;
@@ -17,8 +18,10 @@ import android.widget.ListView;
 
 import net.cjlucas.kanihi.R;
 import net.cjlucas.kanihi.api.ApiHttpClient;
+import net.cjlucas.kanihi.data.BoomboxService;
 import net.cjlucas.kanihi.data.DataService;
 import net.cjlucas.kanihi.data.ImageStore;
+import net.cjlucas.kanihi.data.connectors.DataServiceConnector;
 import net.cjlucas.kanihi.fragments.AlbumListFragment;
 import net.cjlucas.kanihi.fragments.ArtistListFragment;
 import net.cjlucas.kanihi.fragments.ModelListFragment;
@@ -27,7 +30,8 @@ import net.cjlucas.kanihi.fragments.TrackListFragment;
 /**
  * Created by chris on 3/11/14.
  */
-public class MainNavigationActivity extends Activity implements ListView.OnItemClickListener{
+public class MainNavigationActivity extends Activity
+        implements ListView.OnItemClickListener, DataServiceConnector.Listener {
     private Fragment mCurrentFragment;
     private ListView mMenuListView;
     private DrawerLayout mDrawerLayout;
@@ -42,9 +46,7 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
         setContentView(R.layout.activity_main_navigation);
 
         mApiHttpClient = new ApiHttpClient();
-        mApiHttpClient.setApiEndpoint("home.cjlucas.net", 34232);
-
-        mImageStore = new ImageStore(getApplicationContext(), mApiHttpClient);
+        mApiHttpClient.setApiEndpoint("192.168.0.2", 8080);
 
         String[] items = {"Artists", "Albums", "Tracks", "Update"};
 
@@ -58,21 +60,11 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
 
         startService(new Intent(this, DataService.class));
         startService(new Intent(this, ImageStore.class));
+        startService(new Intent(this, BoomboxService.class));
 
-        bindService(new Intent(getApplicationContext(), DataService.class), new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                mDataService = ((DataService.LocalBinder)service).getService();
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-                mDataService = null;
-            }
-        }, 0);
+        DataServiceConnector.connect(getApplicationContext(), this);
 
         addFragment(new ArtistListFragment());
-
     }
 
     private ModelListFragment fragmentForSelection(int position) {
@@ -102,5 +94,15 @@ public class MainNavigationActivity extends Activity implements ListView.OnItemC
         } else {
             addFragment(fragmentForSelection(i));
         }
+    }
+
+    @Override
+    public void onDataServiceConnected(DataService dataService) {
+        mDataService = dataService;
+    }
+
+    @Override
+    public void onDataServiceDisconnected() {
+        mDataService = null;
     }
 }

@@ -34,15 +34,19 @@ import net.cjlucas.kanihi.models.TrackArtist;
 import net.cjlucas.kanihi.models.TrackImage;
 import net.cjlucas.kanihi.models.interfaces.UniqueModel;
 import net.cjlucas.kanihi.prefs.GlobalPrefs;
+import net.cjlucas.kanihi.utils.DataUtils;
 import net.minidev.json.JSONArray;
 
+import java.lang.reflect.Array;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -218,6 +222,8 @@ public class DataService extends Service {
         try {
             if (ancestorClazz == AlbumArtist.class) {
                 return where.eq(Album.COLUMN_ALBUM_ARTIST, ancestor);
+            } else if (ancestorClazz == Album.class) {
+                return where.eq(Album.COLUMN_UUID, ancestor);
             } else {
                 throw new RuntimeException("Unexpected ancestor class received");
             }
@@ -231,6 +237,27 @@ public class DataService extends Service {
      */
     private Where<AlbumArtist, String> albumArtistsWhere(Class ancestorClazz, Object ancestor) {
         return null;
+    }
+
+    /**
+     * @see #tracksWhere(Class, Object)
+     */
+    private Where<Disc, String> discsWhere(Class ancestorClazz, Object ancestor) {
+        if (ancestorClazz == null) {
+            return null;
+        }
+
+        Where<Disc, String> where = mDbHelper.where(Disc.class);
+
+        try {
+            if (ancestorClazz == Album.class) {
+                return where.eq(Disc.COLUMN_ALBUM, ancestor);
+            } else {
+                throw new RuntimeException("Unexpected ancestor class received");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public <T> CloseableIterator<T> executePreparedQuery(Class<T> clazz,
@@ -259,6 +286,87 @@ public class DataService extends Service {
         return mDbHelper.preparedQuery(AlbumArtist.class,
                 albumArtistsWhere(ancestorClazz, ancestorUuid), sortColumn, sortAscending);
 
+    }
+
+    public PreparedQuery<Disc> getDiscsQuery(Class ancestorClazz, String ancestorUuid,
+                                             String sortColumn, boolean sortAscending) {
+        return mDbHelper.preparedQuery(Disc.class,
+                discsWhere(ancestorClazz, ancestorUuid), sortColumn, sortAscending);
+    }
+
+    private String getIdField(Class clazz) {
+        if (clazz == Track.class) {
+            return Track.COLUMN_UUID;
+        } else if (clazz == TrackArtist.class) {
+            return TrackArtist.COLUMN_UUID;
+        } else if (clazz == Genre.class) {
+            return Genre.COLUMN_UUID;
+        } else if (clazz == Disc.class) {
+            return Disc.COLUMN_UUID;
+        } else if (clazz == AlbumArtist.class) {
+            return AlbumArtist.COLUMN_UUID;
+        } else if (clazz == Image.class) {
+            return Image.COLUMN_ID;
+        }
+
+        throw new IllegalArgumentException("Unknown class: " + clazz.getName());
+    }
+
+    public <T> List<T> getModels(Class<T> clazz, List<String> ids) {
+        T[] modelArray = (T[])Array.newInstance(clazz, ids.size());
+
+        Dao <T, String> dao = mDbHelper.dao(clazz);
+        try {
+            CloseableIterator<T> iterator = mDbHelper.iterator(
+                    clazz, mDbHelper.where(clazz).in(getIdField(clazz), ids), null, false);
+
+            while (iterator.hasNext()) {
+                iterator.next();
+                T data = iterator.current();
+                modelArray[ids.indexOf(dao.extractId(data))] = data;
+            }
+
+            iterator.closeQuietly();
+            return Arrays.asList(modelArray);
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void deleteMe(Iterable<Track> tracks) {
+        Set<String> ids = new HashSet<>();
+        for (Track track : tracks) {
+            ids.add(track.getTrackArtist().getUuid());
+        }
+
+        try {
+            for (TrackArtist ta :
+                    mDbHelper.where(TrackArtist.class).in(TrackArtist.COLUMN_UUID, ids).query()) {
+                for (Track track : tracks) {
+                    if (track.getTrackArtist().getUuid().equals(ta.getUuid())) {
+                        track.setTrackArtist(ta);
+                    }
+                }
+            }
+        }catch (Exception e) {}
+    }
+
+    // TODO: try implementing this in single album list fragment
+    public <T> void refresh(Class<T> clazz, T data) {
+        try {
+            mDbHelper.dao(clazz).refresh(data);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void refreshTrack(Track track) {
+        refresh(Genre.class, track.getGenre());
+        refresh(TrackArtist.class, track.getTrackArtist());
+        refresh(Disc.class, track.getDisc());
+        refresh(Album.class, track.getDisc().getAlbum());
+        refresh(AlbumArtist.class, track.getDisc().getAlbum().getAlbumArtist());
     }
 
     public UpdateDbProgress update() {
@@ -306,6 +414,57 @@ public class DataService extends Service {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public Map<Track, List<Image>> getTrackImagesMap(Iterable<Track> tracks) {
+        Map<Track, List<Image>> map = new HashMap<>();
+
+        try {
+            List<String> trackIdsList = new ArrayList<>();
+            for (Track track : tracks) {
+                trackIdsList.add(track.getUuid());
+            }
+            List<TrackImage> trackImageList = mDbHelper.query(TrackImage.class,
+                    mDbHelper.where(TrackImage.class).in(TrackImage.COLUMN_TRACK_ID, trackIdsList),
+                    null, false);
+
+            List<String> imageIdsList = new ArrayList<>();
+            for (TrackImage trackImage : trackImageList) {
+                imageIdsList.add(trackImage.getImageId());
+            }
+
+            List<Image> imagesList = mDbHelper.query(Image.class,
+                    mDbHelper.where(Image.class).in(Image.COLUMN_ID, imageIdsList), null, false);
+
+            for (Track track : tracks) {
+                List<Image> imageList = new ArrayList<>();
+
+                for (TrackImage trackImage : trackImageList) {
+                    // final all TrackImage objects that reference the current track
+                    if (track.getUuid().equals(trackImage.getTrackId())) {
+                        // iterate imagesList until the Image that trackImage references is found
+                        for (Image image : imagesList) {
+                            if (trackImage.getImageId().equals(image.getId())) {
+                                imageList.add(image);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                map.put(track, imageList);
+            }
+            return map;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<Image> getTrackImages(Track track) {
+        List<Track> list = new ArrayList<>();
+        list.add(track);
+        return getTrackImagesMap(list).get(track);
     }
 
     private <T extends ImageRepresentation> void fillMissingAssociatedImages(
@@ -416,8 +575,10 @@ public class DataService extends Service {
         private <T> PreparedQuery<T> preparedQuery(Class<T> clazz, Where<T, String> where,
                                                    String sortColumn, boolean sortAscending) {
             QueryBuilder<T, String> qb = qb(clazz);
-            if (where != null) qb.setWhere(where);
-            qb.orderBy(sortColumn, sortAscending);
+            if (where != null)
+                qb.setWhere(where);
+            if (sortColumn != null)
+                qb.orderBy(sortColumn, sortAscending);
 
             try {
                 return qb.prepare();
@@ -706,6 +867,7 @@ public class DataService extends Service {
             }
         }
 
+        // TODO: rename to handleCalculateProperties
         private void handleUpdateCounts(Message message) {
             mUpdateDbProgress.mCurrentStage = UpdateDbStages.UPDATE_COUNTS;
 
@@ -730,8 +892,14 @@ public class DataService extends Service {
 
                     Dao<Album, String> albumDao = mDbHelper.dao(Album.class);
                     for (Album album : albumDao) {
-                        album.setTrackCount(
-                                mDbHelper.countOf(Track.class, tracksWhere(Album.class, album)));
+                        Where<Track, String> where = tracksWhere(Album.class, album);
+                        album.setTrackCount(mDbHelper.countOf(Track.class, where));
+
+                        QueryBuilder<Track, String> qb = mDbHelper.qb(Track.class);
+                        qb.selectRaw("SUM(" + Track.COLUMN_DURATION + ")")
+                                .setWhere(where);
+                        album.setAlbumDuration(
+                                albumDao.queryRawValue(qb.prepare().getStatement()));
 
                         albumDao.update(album);
                     }

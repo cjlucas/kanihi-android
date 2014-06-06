@@ -8,12 +8,11 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme" >
-        <activity android:name=".fragments.TrackListFragment" />
-        <activity android:name=".fragments.AlbumListFragment" />
-        <activity android:name=".fragments.ArtistListFragment" />
-        <service android:name=".data.ImageStore" />
-        <service android:name=".data.DataService" />
+        android:theme="@style/Theme.Example" >
+
+        <service android:name=".data.ImageStore" android:exported="false"/>
+        <service android:name=".data.DataService" android:exported="false"/>
+        <service android:name=".data.BoomboxService" android:exported="false"/>
 
         <activity
             android:name="net.cjlucas.kanihi.activities.MainNavigationActivity"

@@ -6,6 +6,7 @@ import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.BinaryHttpResponseHandler;
 import com.loopj.android.http.RequestHandle;
 
+import net.cjlucas.kanihi.models.Track;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
@@ -178,5 +179,13 @@ public class ApiHttpClient {
 
     public RequestHandle getImage(String imageId, final Callback<byte[]> callback) {
         return getImage(imageId, -1, callback);
+    }
+
+    public URL getStreamUrl(Track track) {
+        try {
+            return new URL(getUrl("/tracks") + "/" + track.getUuid() + "/stream");
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

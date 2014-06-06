@@ -34,7 +34,7 @@ public class Disc implements UniqueModel {
     @DatabaseField(foreign = true, index = true, columnName = COLUMN_ALBUM)
     private Album mAlbum;
 
-    @ForeignCollectionField(eager = true)
+    @ForeignCollectionField()
     private ForeignCollection<Track> mTracks;
 
     public String getUuid() {

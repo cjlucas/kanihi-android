@@ -1,60 +1,94 @@
 package net.cjlucas.kanihi.fragments;
 
+import android.app.Activity;
+import android.app.Fragment;
 import android.app.ListFragment;
+import android.app.LoaderManager;
 import android.content.Context;
+import android.content.Loader;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.renderscript.Allocation;
+import android.renderscript.Element;
+import android.renderscript.RenderScript;
+import android.renderscript.ScriptIntrinsicBlur;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.j256.ormlite.dao.CloseableIterator;
+
 import net.cjlucas.kanihi.R;
+import net.cjlucas.kanihi.data.loaders.CloseableIteratorAsyncLoader;
 import net.cjlucas.kanihi.data.DataService;
 import net.cjlucas.kanihi.data.ImageStore;
-import net.cjlucas.kanihi.listeners.PaddingShiftOnTouchListener;
+import net.cjlucas.kanihi.data.connectors.DataServiceConnector;
+import net.cjlucas.kanihi.data.connectors.ImageServiceConnector;
+import net.cjlucas.kanihi.data.loaders.DataServiceLoader;
+import net.cjlucas.kanihi.data.loaders.ListAsyncLoader;
 import net.cjlucas.kanihi.models.Album;
+import net.cjlucas.kanihi.models.AlbumArtist;
 import net.cjlucas.kanihi.models.Disc;
 import net.cjlucas.kanihi.models.Track;
+import net.cjlucas.kanihi.models.TrackArtist;
 import net.cjlucas.kanihi.utils.DataUtils;
-import net.cjlucas.kanihi.utils.TextUtils;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * Created by chris on 3/21/14.
  */
-public class SingleAlbumListFragment extends ListFragment {
+public class SingleAlbumListFragment extends ListFragment
+    implements DataServiceConnector.Listener, ImageServiceConnector.Listener,
+        LoaderManager.LoaderCallbacks<SingleAlbumListFragment.PlaylistData>{
+    public static final String ARG_ALBUM_UUID = "album_uuid";
+
     private ImageStore mImageStore;
     private DataService mDataService;
-    private Album mAlbum;
+
+    public class PlaylistData {
+        Album mAlbum;
+        List<Disc> mDiscs;
+        Map<Disc, List<Track>> mDiscTracksMap = new HashMap<>();
+    }
 
     private class PlaylistListAdapter extends BaseAdapter {
         private final int ROW_ALBUM_HEADER = 0;
         private final int ROW_DISC_HEADER = 1;
         private final int ROW_TRACK = 2;
-        private final int ROW_DISC_FOOTER = 3;
 
         private Album mAlbum;
         private List<Disc> mDiscs;
+        private List<Track> mTracks;
         private Map<Disc, List<Track>> mDiscTrackMap;
         private Map<Integer, Track> mRowPositionTrackMap;
         private Map<Integer, Integer> mRowPositionRowTypeMap;
+        private Bitmap mBlurredBitmap;
 
-        public PlaylistListAdapter(Context context, int resourceId, Album album) {
-            mAlbum = album;
-            mDiscs = DataUtils.getList(album.getDiscs().closeableIterator());
-            mDiscTrackMap = new HashMap<>();
-            for (Disc disc : mDiscs) {
-                mDiscTrackMap.put(disc, DataUtils.getList(disc.getTracks().closeableIterator()));
-            }
+        public PlaylistListAdapter(Context context, int resourceId, PlaylistData data) {
+            mAlbum = data.mAlbum;
+            mDiscs = data.mDiscs;
+            mDiscTrackMap = data.mDiscTracksMap;
+            mTracks = new ArrayList<>();
 
             mRowPositionTrackMap = new HashMap<>();
             int rowPos = 1; // skip album header
             for (Disc disc : mDiscs) {
+                mTracks.addAll(mDiscTrackMap.get(disc));
+
                 if(useDiscHeader()) rowPos++; // skip disk header
 
                 for (Track track : mDiscTrackMap.get(disc)) {
@@ -62,18 +96,14 @@ public class SingleAlbumListFragment extends ListFragment {
                 }
             }
 
-            Log.d("blah", mRowPositionTrackMap.toString());
-
             mRowPositionRowTypeMap = new HashMap<>();
             int pos = 0;
             mRowPositionRowTypeMap.put(pos, ROW_ALBUM_HEADER);
             for (Disc disc : mDiscs) {
                if (useDiscHeader()) mRowPositionRowTypeMap.put(++pos, ROW_DISC_HEADER);
-                for (int i = 0; i < mDiscTrackMap.get(disc).size() - 1; i++) {
+                for (int i = 0; i < mDiscTrackMap.get(disc).size(); i++) {
                     mRowPositionRowTypeMap.put(++pos, ROW_TRACK);
                 }
-
-                mRowPositionRowTypeMap.put(++pos, ROW_DISC_FOOTER);
             }
         }
 
@@ -108,7 +138,6 @@ public class SingleAlbumListFragment extends ListFragment {
 
         @Override
         public Track getItem(int position) {
-            Log.d("blah", "getItem position = " + position);
             return mRowPositionTrackMap.get(position);
         }
 
@@ -119,7 +148,7 @@ public class SingleAlbumListFragment extends ListFragment {
 
         @Override
         public int getViewTypeCount() {
-            return 4;
+            return 3;
         }
 
         private View loadView(int layoutId, ViewGroup parent) {
@@ -128,11 +157,70 @@ public class SingleAlbumListFragment extends ListFragment {
             return getActivity().getLayoutInflater().inflate(layoutId, parent, false);
         }
 
-        private void configureRowAlbumHeader(View view) {
-            view.setOnTouchListener(new PaddingShiftOnTouchListener());
+        private Bitmap renderBlurredBitmap(Bitmap image) {
+            Bitmap src = Bitmap.createScaledBitmap(image, 500, 500, true);
+
+            Bitmap outBitmap = src.copy(src.getConfig(), true);
+
+            final RenderScript rs = RenderScript.create(getActivity());
+            final Allocation input = Allocation.createFromBitmap(rs, src);
+            final Allocation output = Allocation.createFromBitmap(rs, outBitmap);
+
+            final ScriptIntrinsicBlur script =
+                    ScriptIntrinsicBlur.create(rs, Element.U8_4(rs));
+            script.setRadius(25f);
+            script.setInput(input);
+            script.forEach(output);
+            output.copyTo(outBitmap);
+
+            rs.destroy();
+
+            return outBitmap;
+        }
+
+        private void configureRowAlbumHeader(final View view) {
+            TextView albumNameView = (TextView)view.findViewById(R.id.album_name);
+            albumNameView.setText(mAlbum.getTitle());
+
+            TextView albumArtistView = (TextView)view.findViewById(R.id.album_artist);
+            albumArtistView.setText(mAlbum.getAlbumArtist().getName());
+
+            TextView albumDateView = (TextView)view.findViewById(R.id.album_date);
+            SimpleDateFormat df = new SimpleDateFormat("MMMM d, yyyy");
+            Date date = mTracks.get(0).getOriginalDate();
+            albumDateView.setText(df.format(date));
+
+            if (mAlbum.getImage() == null)
+                return;
+
+            mImageStore.getBitmap(mAlbum.getImage(), new ImageStore.NewCallback<Bitmap>() {
+                @Override
+                public void onImageAvailable(Bitmap image) {
+                    RelativeLayout albumBg = (RelativeLayout) view.findViewById(R.id.album_background);
+                    if (mBlurredBitmap == null)
+                        mBlurredBitmap = renderBlurredBitmap(image);
+                    albumBg.setBackground(new BitmapDrawable(mBlurredBitmap));
+
+                    ImageView imageView = (ImageView)view.findViewById(R.id.imageView);
+                    imageView.setImageBitmap(image);
+                }
+            });
         }
 
         private void configureRowDiscHeader(int position, View view) {
+            String discSubtitle = null;
+
+            for (int i = 0, count = 1; i < mDiscs.size(); i++) {
+               Disc disc = mDiscs.get(i);
+               if (position == count) {
+                   discSubtitle = disc.getSubtitle();
+                   break;
+               }
+
+                count += mDiscTrackMap.get(disc).size() + 1; // +1 is for the current disc row
+            }
+
+            ((TextView)view.findViewById(R.id.disc_title)).setText(discSubtitle);
         }
 
         private void configureRowDiscFooter(int position, View view) {
@@ -142,18 +230,25 @@ public class SingleAlbumListFragment extends ListFragment {
 
         private void configureRowTrack(int position, View view) {
             Track track = getItem(position);
+            TrackArtist trackArtist = track.getTrackArtist();
+
+            TextView trackNumber = (TextView)view.findViewById(R.id.track_number);
+            trackNumber.setText(String.valueOf(track.getNum()));
+
+            TextView subtitle = (TextView)view.findViewById(R.id.subtitle);
+            if (trackArtist == null || trackArtist.getName() == null) {
+                subtitle.setVisibility(View.GONE);
+            } else {
+                subtitle.setText(track.getTrackArtist().getName());
+            }
 
             TextView leftView = (TextView)view.findViewById(R.id.left_text);
-            TextView rightView = (TextView)view.findViewById(R.id.right_text);
-
             leftView.setText(track.getTitle());
-            rightView.setText(TextUtils.getTimeCode(track.getDuration()));
         }
 
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            Log.i("blah", String.valueOf(position));
             View view = convertView;
             int viewType = getItemViewType(position);
 
@@ -161,16 +256,13 @@ public class SingleAlbumListFragment extends ListFragment {
                 int resourceId;
                 switch(viewType) {
                     case ROW_ALBUM_HEADER:
-                        resourceId = R.layout.playlist_row_album_header;
+                        resourceId = R.layout.single_album_list_header_view;
                         break;
                     case ROW_DISC_HEADER:
                         resourceId = R.layout.playlist_row_disc_header;
                         break;
                     case ROW_TRACK:
                         resourceId = R.layout.playlist_row_track;
-                        break;
-                    case ROW_DISC_FOOTER:
-                        resourceId = R.layout.playlist_row_disc_footer;
                         break;
                     default:
                         throw new RuntimeException("unhandled viewType");
@@ -189,27 +281,129 @@ public class SingleAlbumListFragment extends ListFragment {
                 case ROW_TRACK:
                     configureRowTrack(position, view);
                     break;
-                case ROW_DISC_FOOTER:
-                    configureRowDiscFooter(position, view);
-                    break;
             }
 
             return view;
         }
     }
 
-    public SingleAlbumListFragment(ImageStore imageStore, DataService dataService, Album album) {
-        mImageStore = imageStore;
-        mDataService = dataService;
-        mAlbum = album;
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+
+        Context appContext = activity.getApplicationContext();
+        if (appContext != null) {
+            DataServiceConnector.connect(appContext, this);
+            ImageServiceConnector.connect(appContext, this);
+        }
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.playlist_list_view, container, false);
+        return inflater.inflate(R.layout.playlist_list_view, container, false);
+    }
 
-        PlaylistListAdapter adapter = new PlaylistListAdapter(getActivity(), R.layout.playlist_row_track, mAlbum);
-        setListAdapter(adapter);
-        return view;
+    @Override
+    public Loader<PlaylistData> onCreateLoader(int id, Bundle args) {
+        return new DataServiceLoader<PlaylistData>(getActivity(), mDataService,
+                new Callable<PlaylistData>() {
+                    @Override
+                    public PlaylistData call() throws Exception {
+                        PlaylistData data = new PlaylistData();
+                        long now = System.currentTimeMillis();
+                        long start = now;
+                        List<Album> albums =
+                                DataUtils.getList(mDataService.executePreparedQuery(Album.class,
+                                mDataService.getAlbumsQuery(Album.class,
+                                        getArguments().getString(ARG_ALBUM_UUID),
+                                        Album.COLUMN_TITLE, true)));
+
+                        Log.d("wee", "stage 1: " + (System.currentTimeMillis() - now));
+                        now = System.currentTimeMillis();
+
+                        if (albums.size() > 0) {
+                            Album album = albums.get(0);
+                            data.mAlbum = album;
+                            mDataService.refresh(AlbumArtist.class, album.getAlbumArtist());
+
+                            Log.d("wee", "start stage 2");
+                            List<Disc> discs =
+                                    DataUtils.getList(mDataService.executePreparedQuery(Disc.class,
+                                            mDataService.getDiscsQuery(Album.class, album.getUuid(),
+                                                    Disc.COLUMN_DISC_NUM, true)));
+                            Log.d("wee", "stage 2: " + (System.currentTimeMillis() - now));
+                            now = System.currentTimeMillis();
+                            data.mDiscs = discs;
+
+                            for (Disc disc : discs) {
+                                now = System.currentTimeMillis();
+                                List<Track> tracks = DataUtils.getList(
+                                        disc.getTracks().closeableIterator());
+
+
+
+                                mDataService.deleteMe(tracks);
+                                Log.d("wee", "stage 3: " + (System.currentTimeMillis() - now));
+                                now = System.currentTimeMillis();
+
+                                data.mDiscTracksMap.put(disc, tracks);
+                            }
+                        }
+
+                        Log.d("wee", "final: " + (System.currentTimeMillis() - start));
+
+                        return data;
+                    }
+                });
+    }
+
+    @Override
+    public void onLoadFinished(Loader<PlaylistData> loader, PlaylistData data) {
+        setListAdapter(new PlaylistListAdapter(getActivity(), -1, data));
+    }
+
+    @Override
+    public void onLoaderReset(Loader<PlaylistData> loader) {
+
+    }
+
+    @Override
+    public void onDataServiceConnected(DataService dataService) {
+        mDataService = dataService;
+        getLoaderManager().initLoader(1, null, this);
+    }
+
+    @Override
+    public void onDataServiceDisconnected() {
+
+    }
+
+    @Override
+    public void onImageServiceConnected(ImageStore imageStore) {
+        mImageStore = imageStore;
+    }
+
+    @Override
+    public void onImageServiceDisconnected() {
+
+    }
+
+    @Override
+    public void onListItemClick(ListView l, View v, int position, long id) {
+        Fragment fragment = new MusicPlayerFragment();
+        PlaylistListAdapter adapter = (PlaylistListAdapter)getListAdapter();
+
+        Bundle args = new Bundle();
+        ArrayList<String> uuids = new ArrayList<>();
+        for (Disc disc : adapter.mDiscs) {
+            for (Track track : adapter.mDiscTrackMap.get(disc)) {
+                uuids.add(track.getUuid());
+            }
+        }
+
+        args.putStringArrayList(MusicPlayerFragment.ARG_ADD_TRACKS, uuids);
+
+        fragment.setArguments(args);
+        getFragmentManager().beginTransaction().replace(getId(), fragment).commit();
     }
 }

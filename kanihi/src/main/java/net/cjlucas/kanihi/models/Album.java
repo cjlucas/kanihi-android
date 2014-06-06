@@ -16,6 +16,7 @@ public class Album implements UniqueModel, ImageRepresentation {
     public static final String COLUMN_ALBUM_ARTIST = "album_artist_id";
     public static final String COLUMN_IMAGE = "image";
     public static final String COLUMN_TRACK_COUNT = "track_count";
+    public static final String COLUMN_ALBUM_DURATION = "album_duration";
 
     @DatabaseField(id = true, columnName = COLUMN_UUID)
     private String mUuid;
@@ -28,6 +29,9 @@ public class Album implements UniqueModel, ImageRepresentation {
 
     @DatabaseField(columnName = COLUMN_TRACK_COUNT)
     private long mTrackCount;
+
+    @DatabaseField(columnName = COLUMN_ALBUM_DURATION)
+    private long mAlbumDuration;
 
     @DatabaseField(foreign = true, index = true, columnName = COLUMN_ALBUM_ARTIST)
     private AlbumArtist mAlbumArtist;
@@ -76,6 +80,14 @@ public class Album implements UniqueModel, ImageRepresentation {
 
     public void setTrackCount(long trackCount) {
         mTrackCount = trackCount;
+    }
+
+    public long getAlbumDuration() {
+        return mAlbumDuration;
+    }
+
+    public void setAlbumDuration(long albumDuration) {
+        mAlbumDuration = albumDuration;
     }
 
     public ForeignCollection<Disc> getDiscs() {

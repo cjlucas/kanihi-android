@@ -46,7 +46,7 @@ public class Track {
     @DatabaseField(foreign = true, index = true, columnName = COLUMN_DISC)
     private Disc mDisc;
 
-    @DatabaseField(foreign = true, index = true, columnName = COLUMN_TRACK_ARTIST)
+    @DatabaseField(foreign = true,index = true, columnName = COLUMN_TRACK_ARTIST)
     private TrackArtist mTrackArtist;
 
 

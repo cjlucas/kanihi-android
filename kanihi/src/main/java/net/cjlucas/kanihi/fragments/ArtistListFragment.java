@@ -19,7 +19,8 @@ import net.cjlucas.kanihi.models.Image;
 /**
  * Created by chris on 3/10/14.
  */
-public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
+public class ArtistListFragment extends ModelListFragment<AlbumArtist>
+    implements View.OnClickListener {
 
 //    private ImageStore mImageStore;
 
@@ -44,10 +45,17 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
         TextView textView = (TextView)view.findViewById(R.id.text1);
         textView.setText(artist.getName());
 
+        view.findViewById(R.id.options_menu_btn).setOnClickListener(this);
+        ((ImageView)view.findViewById(R.id.detail_one_image)).setImageResource(R.drawable.disc);
+        ((TextView)view.findViewById(R.id.detail_one_text)).
+                setText(String.valueOf(artist.getAlbumCount()));
+
+        ((ImageView)view.findViewById(R.id.detail_two_image)).setImageResource(R.drawable.note);
+        ((TextView)view.findViewById(R.id.detail_two_text)).
+                setText(String.valueOf(artist.getTrackCount()));
+
         ImageView imageView = (ImageView)view.findViewById(R.id.image_view);
         Image image = artist.getImage();
-        Log.d("WEEE", "" + mImageStore);
-        Log.d("WEEE", "" + image);
         if (image != null && mImageStore != null) {
             mImageStore.loadImage(image, imageView, true /* thumbnail */,
                     new ImageStore.Callback() {
@@ -94,5 +102,14 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist> {
 //    @Override
     public void onDataServiceConnection() {
 
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.options_menu_btn:
+                onActionMenuButtonClicked();
+                break;
+        }
     }
 }

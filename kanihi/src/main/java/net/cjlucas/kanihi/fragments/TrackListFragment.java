@@ -14,6 +14,7 @@ import net.cjlucas.kanihi.models.Track;
  * Created by chris on 3/10/14.
  */
 public class TrackListFragment extends ModelListFragment<Track> {
+    private static final String TAG = "TrackListFragment";
 
     @Override
     public Class<Track> getGenericClass() {
@@ -26,6 +27,7 @@ public class TrackListFragment extends ModelListFragment<Track> {
     }
 
     public View getRowView(Track track, View reusableView, ViewGroup viewGroup) {
+        long start = System.currentTimeMillis();
         View view = reusableView;
         if (view == null && getActivity() != null) {
             view = getActivity().getLayoutInflater()
@@ -35,6 +37,7 @@ public class TrackListFragment extends ModelListFragment<Track> {
         TextView textView = (TextView)view.findViewById(android.R.id.text1);
         textView.setText(track.getTitle());
 
+        Log.d(TAG, "getRowView took (in ms): " + (System.currentTimeMillis() - start));
         return view;
     }
 

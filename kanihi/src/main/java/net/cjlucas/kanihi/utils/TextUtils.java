@@ -19,9 +19,9 @@ public class TextUtils {
         }
 
         long minutes = secs / 60;
-        fmtSb.append("%d:%02d");
+        fmtSb.append(hours > 0 ? "%02d:%02d" : "%d:%02d");
         args.add(minutes);
-        args.add((minutes > 0) ? secs % (minutes * 60) : secs);
+        args.add(minutes > 0 ? secs % (minutes * 60) : secs);
 
         return String.format(Locale.getDefault(), fmtSb.toString(), args.toArray());
     }
