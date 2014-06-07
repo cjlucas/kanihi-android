@@ -65,12 +65,20 @@ public class DataService extends Service {
         public void onDatabaseUpdated();
     }
 
-    public class UpdateDbProgress {
+    public static class UpdateDbProgress {
         private UpdateDbStages mCurrentStage;
         public int mCurrentTrack;
         public int mTotalTracks;
         public String mLastUpdatedAt;
         public String mServerTime; // at start of update
+    }
+
+    public static class ModelCounts {
+        public long artistCount;
+        public long albumCount;
+        public long genreCount;
+        public long discCount;
+        public long tracksCount;
     }
 
     public enum MessageTypes {
@@ -465,6 +473,18 @@ public class DataService extends Service {
         List<Track> list = new ArrayList<>();
         list.add(track);
         return getTrackImagesMap(list).get(track);
+    }
+
+    public ModelCounts getModelCounts() {
+        ModelCounts modelCounts = new ModelCounts();
+
+        modelCounts.artistCount = mDbHelper.countOf(AlbumArtist.class, null);
+        modelCounts.albumCount = mDbHelper.countOf(Album.class, null);
+        modelCounts.genreCount = mDbHelper.countOf(Genre.class, null);
+        modelCounts.discCount = mDbHelper.countOf(Disc.class, null);
+        modelCounts.tracksCount = mDbHelper.countOf(Track.class, null);
+
+        return modelCounts;
     }
 
     private <T extends ImageRepresentation> void fillMissingAssociatedImages(

@@ -6,4 +6,13 @@
     <string name="action_settings">Settings</string>
     <string name="text_placeholder">Text Placeholder</string>
 
+    <!--Main Navigation Drawer Entries-->
+    <string name="artists">Artists</string>
+    <string name="albums">Albums</string>
+    <string name="genres">Genres</string>
+    <string name="discs">Discs</string>
+    <string name="tracks">Tracks</string>
+    <string name="update">Update</string>
+
+
 </resources>

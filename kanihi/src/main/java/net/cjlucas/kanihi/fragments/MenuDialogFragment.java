@@ -126,7 +126,6 @@ public class MenuDialogFragment extends DialogFragment {
         }
 
         for (int i = 0; i < items.length; i++) {
-            Log.d(TAG, "i am here yo");
             items[i] = new MenuDialogItem(resIds[i], texts[i]);
         }
 
