@@ -12,7 +12,7 @@
 
     <ListView
         android:id="@+id/menu_list"
-        android:layout_width="240dp"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="start"
         android:choiceMode="singleChoice"
