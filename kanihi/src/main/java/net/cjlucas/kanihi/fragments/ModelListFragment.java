@@ -13,24 +13,21 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.ImageView;
-import android.widget.ListView;
-import android.widget.TextView;
 
 import com.j256.ormlite.dao.CloseableIterator;
 import com.j256.ormlite.stmt.PreparedQuery;
 
 import net.cjlucas.kanihi.R;
 import net.cjlucas.kanihi.data.BoomboxService;
-import net.cjlucas.kanihi.data.connectors.BoomboxServiceConnector;
-import net.cjlucas.kanihi.data.loaders.CloseableIteratorAsyncLoader;
 import net.cjlucas.kanihi.data.DataService;
 import net.cjlucas.kanihi.data.ImageStore;
 import net.cjlucas.kanihi.data.adapters.ModelAdapter;
 import net.cjlucas.kanihi.data.adapters.RowViewAdapter;
+import net.cjlucas.kanihi.data.connectors.BoomboxServiceConnector;
 import net.cjlucas.kanihi.data.connectors.DataServiceConnector;
 import net.cjlucas.kanihi.data.connectors.ImageServiceConnector;
+import net.cjlucas.kanihi.data.loaders.CloseableIteratorAsyncLoader;
 
 import java.util.concurrent.Callable;
 

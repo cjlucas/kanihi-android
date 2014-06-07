@@ -28,13 +28,12 @@ import net.cjlucas.kanihi.models.AlbumArtist;
 import net.cjlucas.kanihi.models.Disc;
 import net.cjlucas.kanihi.models.Genre;
 import net.cjlucas.kanihi.models.Image;
-import net.cjlucas.kanihi.models.interfaces.ImageRepresentation;
 import net.cjlucas.kanihi.models.Track;
 import net.cjlucas.kanihi.models.TrackArtist;
 import net.cjlucas.kanihi.models.TrackImage;
+import net.cjlucas.kanihi.models.interfaces.ImageRepresentation;
 import net.cjlucas.kanihi.models.interfaces.UniqueModel;
 import net.cjlucas.kanihi.prefs.GlobalPrefs;
-import net.cjlucas.kanihi.utils.DataUtils;
 import net.minidev.json.JSONArray;
 
 import java.lang.reflect.Array;

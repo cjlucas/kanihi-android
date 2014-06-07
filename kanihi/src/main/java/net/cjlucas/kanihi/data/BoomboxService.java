@@ -1,7 +1,6 @@
 package net.cjlucas.kanihi.data;
 
 import android.app.Service;
-import android.content.AsyncTaskLoader;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.os.AsyncTask;
@@ -21,7 +20,6 @@ import net.cjlucas.kanihi.models.Track;
 import net.cjlucas.kanihi.utils.DataUtils;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 public class BoomboxService extends Service

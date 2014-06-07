@@ -18,11 +18,8 @@ import net.cjlucas.kanihi.models.Album;
 import net.cjlucas.kanihi.models.Image;
 import net.cjlucas.kanihi.utils.TextUtils;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Created by chris on 3/11/14.

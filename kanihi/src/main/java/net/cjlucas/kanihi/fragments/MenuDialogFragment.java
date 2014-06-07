@@ -1,28 +1,16 @@
 package net.cjlucas.kanihi.fragments;
 
-import android.app.Activity;
 import android.app.Dialog;
 import android.app.DialogFragment;
-import android.content.Context;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import net.cjlucas.kanihi.R;
-
-import org.w3c.dom.Text;
-
-import java.util.Arrays;
-import java.util.ConcurrentModificationException;
 
 /**
  * Created by chris on 6/5/14.

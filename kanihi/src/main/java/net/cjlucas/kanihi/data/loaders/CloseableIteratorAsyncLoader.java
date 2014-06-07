@@ -1,15 +1,11 @@
 package net.cjlucas.kanihi.data.loaders;
 
-import android.content.AsyncTaskLoader;
 import android.content.Context;
-import android.util.Log;
 
 import com.j256.ormlite.dao.CloseableIterator;
-import com.j256.ormlite.stmt.PreparedQuery;
 
 import net.cjlucas.kanihi.data.DataService;
 
-import java.io.Closeable;
 import java.util.concurrent.Callable;
 
 /**

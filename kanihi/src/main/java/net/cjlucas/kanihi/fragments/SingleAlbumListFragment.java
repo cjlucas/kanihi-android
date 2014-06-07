@@ -26,16 +26,12 @@ import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.j256.ormlite.dao.CloseableIterator;
-
 import net.cjlucas.kanihi.R;
-import net.cjlucas.kanihi.data.loaders.CloseableIteratorAsyncLoader;
 import net.cjlucas.kanihi.data.DataService;
 import net.cjlucas.kanihi.data.ImageStore;
 import net.cjlucas.kanihi.data.connectors.DataServiceConnector;
 import net.cjlucas.kanihi.data.connectors.ImageServiceConnector;
 import net.cjlucas.kanihi.data.loaders.DataServiceLoader;
-import net.cjlucas.kanihi.data.loaders.ListAsyncLoader;
 import net.cjlucas.kanihi.models.Album;
 import net.cjlucas.kanihi.models.AlbumArtist;
 import net.cjlucas.kanihi.models.Disc;

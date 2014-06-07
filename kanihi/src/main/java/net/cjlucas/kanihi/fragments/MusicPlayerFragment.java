@@ -20,7 +20,6 @@ import android.widget.TextView;
 import net.cjlucas.boombox.Boombox;
 import net.cjlucas.boombox.BoomboxInfoListener;
 import net.cjlucas.boombox.provider.AudioDataProvider;
-import net.cjlucas.boombox.provider.HttpAudioDataProvider;
 import net.cjlucas.kanihi.R;
 import net.cjlucas.kanihi.data.BoomboxService;
 import net.cjlucas.kanihi.data.DataService;
@@ -29,14 +28,9 @@ import net.cjlucas.kanihi.data.connectors.BoomboxServiceConnector;
 import net.cjlucas.kanihi.data.connectors.DataServiceConnector;
 import net.cjlucas.kanihi.data.connectors.ImageServiceConnector;
 import net.cjlucas.kanihi.data.loaders.DataServiceLoader;
-import net.cjlucas.kanihi.models.Album;
-import net.cjlucas.kanihi.models.Disc;
 import net.cjlucas.kanihi.models.Image;
 import net.cjlucas.kanihi.models.Track;
-import net.cjlucas.kanihi.models.TrackArtist;
 
-import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
