@@ -9,6 +9,9 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -69,6 +72,12 @@ public class MusicPlayerFragment extends Fragment
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         Log.d(TAG, "onCreateView");
         return inflater.inflate(R.layout.music_player, container, false);
@@ -103,6 +112,29 @@ public class MusicPlayerFragment extends Fragment
             BoomboxServiceConnector.connect(appContext, this);
         }
 
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.music_player_options_menu, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.up_next:
+                getFragmentManager().beginTransaction()
+                        .setCustomAnimations(R.animator.fade_in, R.animator.fade_out)
+                        .addToBackStack(null)
+                        .replace(getId(), new UpNextListFragment())
+                        .commit();
+                break;
+            default:
+                break;
+        }
+
+        return true;
     }
 
     private Boombox getBoombox() {

@@ -20,6 +20,7 @@ import net.cjlucas.kanihi.data.connectors.DataServiceConnector;
 import net.cjlucas.kanihi.models.Track;
 import net.cjlucas.kanihi.utils.DataUtils;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -156,5 +157,14 @@ public class BoomboxService extends Service
 
     public Track getTrack(AudioDataProvider provider) {
         return (Track)provider.getId();
+    }
+
+    public List<Track> getPlaylist() {
+        List<Track> playlist = new ArrayList<>();
+        for (AudioDataProvider provider : mBoombox.getPlaylist()) {
+            playlist.add((Track)provider.getId());
+        }
+
+        return playlist;
     }
 }

@@ -12,4 +12,7 @@
     <color name="list_item_bg_pressed">#f2f2f2</color>
     <!--<color name="list_item_bg_pressed">#fff000</color>-->
     <color name="list_item_bg_checked">#a7d3de</color>
+
+    <color name="playlist_item_text_default">#000000</color>
+    <color name="playlist_item_text_checked">#bb0000</color>
 </resources>
