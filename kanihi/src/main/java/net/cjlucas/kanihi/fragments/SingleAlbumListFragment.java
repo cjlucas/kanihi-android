@@ -6,6 +6,7 @@ import android.app.ListFragment;
 import android.app.LoaderManager;
 import android.content.Context;
 import android.content.Loader;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
@@ -13,6 +14,8 @@ import android.renderscript.Allocation;
 import android.renderscript.Element;
 import android.renderscript.RenderScript;
 import android.renderscript.ScriptIntrinsicBlur;
+import android.text.SpannableString;
+import android.text.style.RelativeSizeSpan;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -209,9 +212,10 @@ public class SingleAlbumListFragment extends ListFragment
 
         private void configureRowDiscHeader(int position, View view) {
             String discSubtitle = null;
+            Disc disc = null;
 
             for (int i = 0, count = 1; i < mDiscs.size(); i++) {
-               Disc disc = mDiscs.get(i);
+               disc = mDiscs.get(i);
                if (position == count) {
                    discSubtitle = disc.getSubtitle();
                    break;
@@ -220,7 +224,33 @@ public class SingleAlbumListFragment extends ListFragment
                 count += mDiscTrackMap.get(disc).size() + 1; // +1 is for the current disc row
             }
 
-            ((TextView)view.findViewById(R.id.disc_title)).setText(discSubtitle);
+            int[] discNumResIds = { R.string.disc_one, R.string.disc_two, R.string.disc_three,
+                    R.string.disc_four, R.string.disc_five, R.string.disc_six, R.string.disc_seven,
+                    R.string.disc_eight, R.string.disc_nine, R.string.disc_ten };
+
+            int discNum = disc.getDiscNum();
+            int discNumResId = (discNum > 0 && discNum <= 10) ? discNumResIds[discNum - 1] : -1;
+
+            Resources res = getResources();
+            String discNumStr = res.getString(R.string.disc) + " "
+                    + (discNumResId != -1
+                    ? res.getString(discNumResId) : String.valueOf(disc.getDiscNum()));
+
+            CharSequence discRowText;
+            if (disc.getSubtitle() != null) {
+                SpannableString spannable
+                        = new SpannableString(disc.getSubtitle() + " (" + discNumStr + ")");
+
+                int start = disc.getSubtitle().length() + 1;
+                int end = spannable.length();
+                spannable.setSpan(new RelativeSizeSpan(.7f), start, end, 0);
+
+                discRowText = spannable;
+            } else {
+                discRowText = discNumStr;
+            }
+
+            ((TextView)view.findViewById(R.id.disc_title)).setText(discRowText);
         }
 
         private void configureRowDiscFooter(int position, View view) {

@@ -14,5 +14,17 @@
     <string name="tracks">Tracks</string>
     <string name="update">Update</string>
 
+    <string name="disc">Disc</string>
+    <string name="disc_one">One</string>
+    <string name="disc_two">Two</string>
+    <string name="disc_three">Three</string>
+    <string name="disc_four">Four</string>
+    <string name="disc_five">Five</string>
+    <string name="disc_six">Six</string>
+    <string name="disc_seven">Seven</string>
+    <string name="disc_eight">Eight</string>
+    <string name="disc_nine">Nine</string>
+    <string name="disc_ten">Ten</string>
+
 
 </resources>
