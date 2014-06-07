@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.Loader;
 import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -87,10 +88,10 @@ public class MainNavigationActivity extends Activity
         }
 
         public void updateCounts(DataService.ModelCounts counter) {
-            mEntries[0] = new Entry(R.string.artists, R.drawable.note, counter.artistCount);
-            mEntries[1] = new Entry(R.string.albums, R.drawable.note, counter.albumCount);
-            mEntries[2] = new Entry(R.string.genres, R.drawable.note, counter.genreCount);
-            mEntries[3] = new Entry(R.string.tracks, R.drawable.note, counter.tracksCount);
+            mEntries[0] = new Entry(R.string.artists, R.drawable.microphone, counter.artistCount);
+            mEntries[1] = new Entry(R.string.albums, R.drawable.disc, counter.albumCount);
+            mEntries[2] = new Entry(R.string.genres, R.drawable.genre, counter.genreCount);
+            mEntries[3] = new Entry(R.string.tracks, R.drawable.note2, counter.tracksCount);
             mEntries[4] = new Entry(R.string.update, R.drawable.note, -1);
 
             notifyDataSetChanged();
