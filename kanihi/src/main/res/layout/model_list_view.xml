@@ -35,7 +35,8 @@
         <ListView android:id="@android:id/list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:divider="@color/background"
+            android:dividerHeight="1dp"
+            android:divider="#e5e5e5"
             android:drawSelectorOnTop="false"/>
     </FrameLayout>
 

@@ -1,118 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
     android:paddingLeft="10dp"
     android:paddingRight="10dp"
-    android:paddingTop="5dp"
-    android:paddingBottom="5dp"
-    android:background="@color/background"> <!-- fixes a bug that changes bg color on press -->
+    android:background="@drawable/list_item_bg_colors">
 
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="90dp"
-        android:background="@drawable/list_item_border_colors"
-        android:padding="1dp" >
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:id="@+id/inner_container">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <net.cjlucas.kanihi.views.SquareImageView
+            android:layout_width="80dp"
             android:layout_height="match_parent"
-            android:background="@drawable/list_item_bg_colors"
-            android:layout_centerInParent="true"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
-            android:paddingLeft="4dp"
-            android:paddingRight="10dp"
-            android:orientation="horizontal"
-            android:id="@+id/inner_container">
+            android:layout_weight="0"
+            android:id="@+id/image_view"
+
+            android:src="@drawable/jack"/>
+        <TextView
+            android:id="@+id/text1"
+            android:layout_width="0dp"
+            android:layout_height="fill_parent"
+            android:layout_weight="1"
+            android:paddingLeft="10dp"
+            android:gravity="center_vertical"
+            android:text="@string/text_placeholder"
+            android:textSize="16sp" />
+
+        <RelativeLayout
+            android:id="@+id/options_menu_btn"
+            android:layout_width="70dp"
+            android:layout_height="fill_parent"
+            android:padding="2dp">
 
             <ImageView
-                android:layout_width="80dp"
-                android:layout_height="match_parent"
-                android:layout_weight="0"
-                android:id="@+id/image_view"
+                android:src="@drawable/menu"
+                android:layout_width="wrap_content"
+                android:layout_height="16dp"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentRight="true"
+                android:tint="@color/secondary_model_row"/>
 
-                android:src="@drawable/jack"/>
-            <TextView
-                android:id="@+id/text1"
-                android:layout_width="0dp"
-                android:layout_height="fill_parent"
-                android:layout_weight="1"
-                android:paddingLeft="10dp"
-                android:gravity="center_vertical"
-                android:text="@string/text_placeholder"
-                android:textSize="16sp" />
-
-            <RelativeLayout
-                android:id="@+id/options_menu_btn"
-                android:layout_width="70dp"
-                android:layout_height="fill_parent"
-                android:padding="2dp">
+            <LinearLayout
+                android:id="@+id/detail_one_layout"
+                android:layout_above="@+id/detail_two_layout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="bottom|right"
+                android:layout_alignParentRight="true"
+                android:paddingBottom="2dp">
 
                 <ImageView
-                    android:src="@drawable/menu"
+                    android:id="@+id/detail_one_image"
                     android:layout_width="wrap_content"
-                    android:layout_height="16dp"
-                    android:layout_alignParentTop="true"
-                    android:layout_alignParentRight="true"
+                    android:layout_height="14dp"
+                    android:adjustViewBounds="true"
+                    android:layout_gravity="center_vertical"
                     android:tint="@color/secondary_model_row"/>
 
-                <LinearLayout
-                    android:id="@+id/detail_one_layout"
-                    android:layout_above="@+id/detail_two_layout"
+                <TextView
+                    android:id="@+id/detail_one_text"
+                    android:paddingLeft="4dp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="bottom|right"
-                    android:layout_alignParentRight="true"
-                    android:paddingBottom="2dp">
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:textColor="@color/secondary_model_row"/>
+            </LinearLayout>
 
-                    <ImageView
-                        android:id="@+id/detail_one_image"
-                        android:layout_width="wrap_content"
-                        android:layout_height="14dp"
-                        android:adjustViewBounds="true"
-                        android:layout_gravity="center_vertical"
-                        android:tint="@color/secondary_model_row"/>
+            <LinearLayout
+                android:id="@+id/detail_two_layout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentBottom="true"
+                android:paddingTop="2dp">
 
-                    <TextView
-                        android:id="@+id/detail_one_text"
-                        android:paddingLeft="4dp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="12sp"
-                        android:gravity="center"
-                        android:textColor="@color/secondary_model_row"/>
-                </LinearLayout>
+                <ImageView
+                    android:id="@+id/detail_two_image"
+                    android:layout_width="wrap_content"
+                    android:adjustViewBounds="true"
+                    android:layout_height="14dp"
+                    android:layout_gravity="center_vertical"
+                    android:tint="@color/secondary_model_row"/>
 
-                <LinearLayout
-                    android:id="@+id/detail_two_layout"
+                <TextView
+                    android:id="@+id/detail_two_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_alignParentRight="true"
-                    android:layout_alignParentBottom="true"
-                    android:paddingTop="2dp">
+                    android:paddingLeft="4dp"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:textColor="@color/secondary_model_row"
+                    android:maxLines="1"/>
+            </LinearLayout>
+        </RelativeLayout>
+    </LinearLayout>
 
-                    <ImageView
-                        android:id="@+id/detail_two_image"
-                        android:layout_width="wrap_content"
-                        android:adjustViewBounds="true"
-                        android:layout_height="14dp"
-                        android:layout_gravity="center_vertical"
-                        android:tint="@color/secondary_model_row"/>
-
-                    <TextView
-                        android:id="@+id/detail_two_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:paddingLeft="4dp"
-                        android:textSize="12sp"
-                        android:gravity="center"
-                        android:textColor="@color/secondary_model_row"
-                        android:maxLines="1"/>
-                </LinearLayout>
-            </RelativeLayout>
-        </LinearLayout>
-    </RelativeLayout>
-</RelativeLayout>
+    <!--<View-->
+        <!--android:layout_width="fill_parent"-->
+        <!--android:layout_height="1dp"-->
+        <!--android:layout_gravity="bottom"-->
+        <!--android:background="#ff0000"/>-->
+</FrameLayout>
