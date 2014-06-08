@@ -22,16 +22,10 @@ public class CloseableIteratorAsyncLoader<T> extends DataServiceLoader<Closeable
     protected void onReset() {
         super.onReset();
 
-        if (mCache != null)
+        if (mCache != null) {
             mCache.closeQuietly();
-    }
-
-    @Override
-    protected void onStopLoading() {
-        super.onStopLoading();
-
-        if (mCache != null)
-            mCache.closeQuietly();
+            mCache = null;
+        }
     }
 }
 
