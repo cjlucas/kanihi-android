@@ -123,7 +123,8 @@ public class ImageStore extends Service {
     }
 
     private Drawable getDrawable(File f) {
-        if (!f.exists()) throw new RuntimeException("getDrawable: File doesn't exist");
+        if (!f.exists())
+            throw new RuntimeException("getDrawable: File doesn't exist");
 
         return Drawable.createFromPath(f.getAbsolutePath());
     }
@@ -166,9 +167,12 @@ public class ImageStore extends Service {
 
         final File imagePath = getPath(image, thumbnail);
         if (imagePath.exists()) {
+            Log.d(TAG, "loadImage: loading from disk");
             callback.onImageAvailable(imageView, getDrawable(imagePath));
             return;
         }
+
+        Log.d(TAG, "loadImage: loading from API");
 
         RequestHandle req = mApiHttpClient.getImage(image.getId(), thumbnail ? imageView.getWidth() : -1,
                 new ApiHttpClient.Callback<byte[]>() {

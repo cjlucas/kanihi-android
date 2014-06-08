@@ -37,7 +37,6 @@ public abstract class ModelListFragment<E> extends ListFragment
         BoomboxServiceConnector.Listener {
     protected static final String ARG_ANCESTOR_CLASS    = "ANCESTOR_CLASS";
     protected static final String ARG_ANCESTOR_UUID     = "ANCESTOR_UUID";
-    public static final String ARG_ALBUM_UUID = "ALBUM_UUID";
 
     protected DataService mDataService;
     protected ImageStore mImageStore;
