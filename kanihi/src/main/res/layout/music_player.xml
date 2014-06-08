@@ -5,115 +5,139 @@
     android:layout_height="match_parent"
     android:background="#fff">
 
-    <net.cjlucas.kanihi.views.SquareImageView
+    <net.cjlucas.kanihi.views.SquareFrameLayout
+        android:id="@+id/image_frame"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:adjustViewBounds="true"
-        android:id="@+id/imageView"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_alignParentEnd="true">
 
-    <RelativeLayout
+        <!--Blurred View Tint-->
+        <View
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:background="#99000000"/>
+
+        <net.cjlucas.kanihi.views.SquareImageView
+            android:id="@+id/imageView"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"/>
+
+    </net.cjlucas.kanihi.views.SquareFrameLayout>
+
+    <FrameLayout
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_centerHorizontal="true"
-        android:layout_below="@+id/imageView">
+        android:layout_below="@+id/image_frame">
 
-        <TextView
+        <View
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:id="@+id/track_artist_name"
-            android:layout_above="@+id/track_title"
-            android:layout_centerHorizontal="true" />
+            android:layout_height="2dp"
+            android:background="#e1e1e1"
+            android:layout_gravity="top"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:id="@+id/track_title"
-            android:textStyle="bold"
-            android:layout_above="@+id/album_name"
-            android:layout_centerHorizontal="true"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingBottom="20dp"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:id="@+id/album_name"
-            android:layout_centerHorizontal="true"
-            android:layout_above="@+id/controls" />
-
-        <LinearLayout
-            android:id="@+id/controls"
-            android:orientation="horizontal"
+        <RelativeLayout
             android:layout_width="fill_parent"
-            android:layout_height="30dp"
-            android:layout_above="@+id/time_info">
-
-            <ImageView
-                android:id="@+id/prev"
-                android:layout_width="0dp"
-                android:layout_height="fill_parent"
-                android:layout_gravity="center_vertical"
-                android:layout_weight=".45"
-                android:clickable="true"
-                android:src="@drawable/prev"/>
-            <ImageView
-                android:id="@+id/toggle_play_pause"
-                android:layout_width="0dp"
-                android:layout_height="fill_parent"
-                android:layout_gravity="center_vertical"
-                android:layout_weight=".1"
-                android:clickable="true"
-                android:src="@drawable/play"/>
-
-            <ImageView
-                android:id="@+id/next"
-                android:layout_width="0dp"
-                android:layout_height="fill_parent"
-                android:layout_gravity="center_vertical"
-                android:layout_weight=".45"
-                android:clickable="true"
-                android:src="@drawable/next"/>
-
-            </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/time_info"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_alignParentBottom="true"
-            android:paddingTop="10dp"
-            android:paddingLeft="10dp"
-            android:paddingRight="10dp"
-            android:paddingBottom="10dp">
+            android:layout_height="fill_parent">
 
             <TextView
-                android:layout_width="0px"
-                android:layout_height="fill_parent"
-                android:textAppearance="?android:attr/textAppearanceSmall"
-                android:layout_weight=".1"
-                android:gravity="center_vertical"
-                android:text="0:00" />
-
-            <SeekBar
-                android:layout_width="0px"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight=".8"/>
-
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:id="@+id/track_artist_name"
+                android:layout_above="@+id/track_title"
+                android:layout_centerHorizontal="true" />
 
             <TextView
-                android:layout_width="0px"
-                android:layout_height="fill_parent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:textAppearance="?android:attr/textAppearanceSmall"
-                android:layout_weight=".1"
-                android:gravity="center_vertical"
-                android:text="-0:00" />
+                android:id="@+id/track_title"
+                android:textStyle="bold"
+                android:layout_above="@+id/album_name"
+                android:layout_centerHorizontal="true"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="20dp"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:id="@+id/album_name"
+                android:layout_centerHorizontal="true"
+                android:layout_above="@+id/controls" />
+
+            <LinearLayout
+                android:id="@+id/controls"
+                android:orientation="horizontal"
+                android:layout_width="fill_parent"
+                android:layout_height="20dp"
+                android:layout_above="@+id/time_info">
+
+                <ImageView
+                    android:id="@+id/prev"
+                    android:layout_width="0dp"
+                    android:layout_height="fill_parent"
+                    android:layout_gravity="center_vertical"
+                    android:layout_weight=".45"
+                    android:clickable="true"
+                    android:src="@drawable/prev"/>
+                <ImageView
+                    android:id="@+id/toggle_play_pause"
+                    android:layout_width="0dp"
+                    android:layout_height="fill_parent"
+                    android:layout_gravity="center_vertical"
+                    android:layout_weight=".1"
+                    android:clickable="true"
+                    android:src="@drawable/play"/>
+
+                <ImageView
+                    android:id="@+id/next"
+                    android:layout_width="0dp"
+                    android:layout_height="fill_parent"
+                    android:layout_gravity="center_vertical"
+                    android:layout_weight=".45"
+                    android:clickable="true"
+                    android:src="@drawable/next"/>
 
             </LinearLayout>
-    </RelativeLayout>
+
+            <LinearLayout
+                android:id="@+id/time_info"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_alignParentBottom="true"
+                android:paddingTop="10dp"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:layout_width="0px"
+                    android:layout_height="fill_parent"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:layout_weight=".1"
+                    android:gravity="center_vertical"
+                    android:text="0:00" />
+
+                <SeekBar
+                    android:layout_width="0px"
+                    android:layout_height="wrap_content"
+                    android:layout_weight=".8"/>
+
+
+                <TextView
+                    android:layout_width="0px"
+                    android:layout_height="fill_parent"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:layout_weight=".1"
+                    android:gravity="center_vertical"
+                    android:text="-0:00" />
+
+            </LinearLayout>
+        </RelativeLayout>
+    </FrameLayout>
 </RelativeLayout>

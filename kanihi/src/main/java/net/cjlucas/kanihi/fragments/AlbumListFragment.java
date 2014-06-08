@@ -79,12 +79,13 @@ public class AlbumListFragment extends ModelListFragment<Album> {
 
         Image image = album.getImage();
         if (image != null) {
-            mImageStore.loadImage(image, holder.primaryImageView, true, new ImageStore.Callback() {
-                @Override
-                public void onImageAvailable(final ImageView imageView, final Drawable drawable) {
-                    ImageAttacher.attach(getActivity(), imageView, drawable);
-                }
-            });
+            mImageStore.loadImage(image, holder.primaryImageView, ImageStore.ImageType.THUMBNAIL,
+                    new ImageStore.Callback() {
+                        @Override
+                        public void onImageAvailable(final ImageView imageView, final Drawable drawable) {
+                            ImageAttacher.attach(getActivity(), imageView, drawable);
+                        }
+                    });
         }
 
         Log.d(TAG, "getRowView took (in ms): " + (System.currentTimeMillis() - start));

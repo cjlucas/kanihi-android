@@ -56,7 +56,7 @@ public class ArtistListFragment extends ModelListFragment<AlbumArtist>
         ImageView imageView = (ImageView)view.findViewById(R.id.image_view);
         Image image = artist.getImage();
         if (image != null && mImageStore != null) {
-            mImageStore.loadImage(image, imageView, true /* thumbnail */,
+            mImageStore.loadImage(image, imageView, ImageStore.ImageType.THUMBNAIL,
                     new ImageStore.Callback() {
                         @Override
                         public void onImageAvailable(final ImageView imageView,

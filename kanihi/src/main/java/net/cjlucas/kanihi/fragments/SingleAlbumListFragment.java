@@ -1,5 +1,6 @@
 package net.cjlucas.kanihi.fragments;
 
+import android.animation.ObjectAnimator;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.ListFragment;
@@ -9,6 +10,8 @@ import android.content.Loader;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.renderscript.Allocation;
 import android.renderscript.Element;
@@ -162,27 +165,6 @@ public class SingleAlbumListFragment extends ListFragment
             return getActivity().getLayoutInflater().inflate(layoutId, parent, false);
         }
 
-        private Bitmap renderBlurredBitmap(Bitmap image) {
-            Bitmap src = Bitmap.createScaledBitmap(image, 500, 500, true);
-
-            Bitmap outBitmap = src.copy(src.getConfig(), true);
-
-            final RenderScript rs = RenderScript.create(getActivity());
-            final Allocation input = Allocation.createFromBitmap(rs, src);
-            final Allocation output = Allocation.createFromBitmap(rs, outBitmap);
-
-            final ScriptIntrinsicBlur script =
-                    ScriptIntrinsicBlur.create(rs, Element.U8_4(rs));
-            script.setRadius(25f);
-            script.setInput(input);
-            script.forEach(output);
-            output.copyTo(outBitmap);
-
-            rs.destroy();
-
-            return outBitmap;
-        }
-
         private void configureRowAlbumHeader(final View view) {
             TextView albumNameView = (TextView)view.findViewById(R.id.album_name);
             albumNameView.setText(mAlbum.getTitle());
@@ -200,16 +182,40 @@ public class SingleAlbumListFragment extends ListFragment
 
             mImageStore.getBitmap(mAlbum.getImage(), new ImageStore.NewCallback<Bitmap>() {
                 @Override
-                public void onImageAvailable(Bitmap image) {
-                    RelativeLayout albumBg = (RelativeLayout) view.findViewById(R.id.album_background);
-                    if (mBlurredBitmap == null)
-                        mBlurredBitmap = renderBlurredBitmap(image);
-                    albumBg.setBackground(new BitmapDrawable(mBlurredBitmap));
+                public void onImageAvailable(final Bitmap image) {
+                    if (mBlurredBitmap == null) {
+                        mImageStore.loadBlurredImage(mAlbum.getImage(), new ImageStore.Callback() {
+                            @Override
+                            public void onImageAvailable(ImageView imageView, Drawable drawable) {
+                                mBlurredBitmap = ((BitmapDrawable)drawable).getBitmap();
 
-                    ImageView imageView = (ImageView)view.findViewById(R.id.imageView);
-                    imageView.setImageBitmap(image);
-                }
-            });
+                                if (getActivity() == null)
+                                    return;
+
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        ImageView albumBg = (ImageView)view.findViewById(R.id.album_background);
+                                        albumBg.setImageBitmap(mBlurredBitmap);
+                                        ObjectAnimator anim = ObjectAnimator.ofFloat(albumBg, View.ALPHA, 0, 1).setDuration(1000);
+                                        anim.start();
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    if (getActivity() == null)
+                        return;
+
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ImageView imageView = (ImageView) view.findViewById(R.id.imageView);
+                            imageView.setImageBitmap(image);
+                        }
+                    });
+                }});
         }
 
         private void configureRowDiscHeader(int position, View view) {

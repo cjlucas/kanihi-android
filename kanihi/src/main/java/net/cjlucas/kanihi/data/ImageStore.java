@@ -7,8 +7,14 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.Looper;
+import android.renderscript.Allocation;
+import android.renderscript.Element;
+import android.renderscript.RenderScript;
+import android.renderscript.ScriptIntrinsicBlur;
 import android.util.Log;
 import android.util.LruCache;
 import android.widget.ImageView;
@@ -28,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ImageStore extends Service {
     private static final String LARGE_DIR = "images";
     private static final String THUMB_DIR = "thumbs";
+    private static final String BLURRED_DIR = "blurred";
     private static final String TAG = "ImageStore";
     private static final int THUMBNAIL_CACHE_SIZE = 128 * 1024;
 
@@ -36,6 +43,10 @@ public class ImageStore extends Service {
     private Map<ImageView, RequestHandle> mRequestHandleMap;
     private LruCache<String, Drawable> mThumbnailCache;
     private IBinder mBinder = new LocalBinder();
+
+    public enum ImageType {
+        FULL_SIZE, THUMBNAIL, BLURRED
+    }
 
     public class LocalBinder extends Binder {
         public ImageStore getService() {
@@ -66,8 +77,9 @@ public class ImageStore extends Service {
         mApiHttpClient = new ApiHttpClient();
         mApiHttpClient.setApiEndpoint("192.168.0.2", 8080);
 
-        createDirIfNotExists(getImagesDir());
-        createDirIfNotExists(getThumbsDir());
+        for (ImageType imageType : ImageType.values()) {
+            createDirIfNotExists(getPath(imageType));
+        }
     }
 
     private void createDirIfNotExists(File dir) {
@@ -76,23 +88,46 @@ public class ImageStore extends Service {
         }
     }
 
-    private File getImagesDir() {
-        return new File(getCacheDir(), LARGE_DIR);
+    private File getPath(ImageType imageType) {
+        String relDir = null;
+        switch(imageType) {
+            case FULL_SIZE:
+                relDir = LARGE_DIR;
+                break;
+            case THUMBNAIL:
+                relDir = THUMB_DIR;
+                break;
+            case BLURRED:
+                relDir = BLURRED_DIR;
+                break;
+        }
+        return new File(getCacheDir(), relDir);
     }
 
-    private File getThumbsDir() {
-        return new File(getCacheDir(), THUMB_DIR);
+    private File getPath(Image image, ImageType imageType) {
+        return new File(getPath(imageType), image.getId());
     }
 
-    private File getPath(Image image, boolean thumbnail) {
-        File dir = thumbnail ? getThumbsDir() : getImagesDir();
-        return new File(dir, image.getId());
-    }
-
-    private boolean writeImage(Image image, byte[] data, boolean thumbnail) {
+    private boolean writeImage(Image image, byte[] data, ImageType imageType) {
         try {
-            FileOutputStream fos = new FileOutputStream(getPath(image, thumbnail));
+            FileOutputStream fos = new FileOutputStream(getPath(image, imageType));
             fos.write(data);
+            fos.close();
+
+            return true;
+        } catch (FileNotFoundException e) {
+            Log.e(TAG, "Could not write e to disk", e);
+        } catch(IOException e) {
+            Log.e(TAG, "Could not write data to disk", e);
+        }
+
+        return false;
+    }
+
+    private boolean writeImage(Image image, Bitmap bitmap, ImageType imageType) {
+        try {
+            FileOutputStream fos = new FileOutputStream(getPath(image, imageType));
+            bitmap.compress(Bitmap.CompressFormat.PNG, 90, fos);
             fos.close();
 
             return true;
@@ -130,7 +165,7 @@ public class ImageStore extends Service {
     }
 
     public void getBitmap(final Image image, final NewCallback<Bitmap> callback) {
-        File imagePath = getPath(image, false);
+        File imagePath = getPath(image, ImageType.FULL_SIZE);
 
         if (imagePath.exists()) {
             callback.onImageAvailable(BitmapFactory.decodeFile(imagePath.getAbsolutePath()));
@@ -140,7 +175,7 @@ public class ImageStore extends Service {
         mApiHttpClient.getImage(image.getId(), -1, new ApiHttpClient.Callback<byte[]>() {
             @Override
             public void onSuccess(byte[] data) {
-                writeImage(image, data, false);
+                writeImage(image, data, ImageType.FULL_SIZE);
                 callback.onImageAvailable(BitmapFactory.decodeByteArray(data, 0, data.length));
             }
 
@@ -155,34 +190,54 @@ public class ImageStore extends Service {
 
     }
 
-    public void loadImage(final Image image, final ImageView imageView, final boolean thumbnail,
+    public void loadImage(final Image image, final ImageView imageView, final ImageType imageType,
                           final Callback callback) {
         // cancel image request on this view if one is pending
         cancelRequest(imageView);
 
-        if (thumbnail && mThumbnailCache.get(image.getId()) != null) {
+        if (imageType == ImageType.THUMBNAIL && mThumbnailCache.get(image.getId()) != null) {
+            Log.d(TAG, "loadImage: loading from cache");
             callback.onImageAvailable(imageView, mThumbnailCache.get(image.getId()));
             return;
         }
 
-        final File imagePath = getPath(image, thumbnail);
+        final File imagePath = getPath(image, imageType);
         if (imagePath.exists()) {
             Log.d(TAG, "loadImage: loading from disk");
-            callback.onImageAvailable(imageView, getDrawable(imagePath));
+            doInBackground(new Runnable() {
+                @Override
+                public void run() {
+                    Drawable drawable = getDrawable(imagePath);
+                    callback.onImageAvailable(imageView, drawable);
+
+                    if (imageType == ImageType.THUMBNAIL) {
+                        mThumbnailCache.put(image.getId(), drawable);
+                    }
+                }
+            });
             return;
         }
 
         Log.d(TAG, "loadImage: loading from API");
 
-        RequestHandle req = mApiHttpClient.getImage(image.getId(), thumbnail ? imageView.getWidth() : -1,
+        RequestHandle req = mApiHttpClient.getImage(image.getId(),
+                imageType == ImageType.THUMBNAIL ? imageView.getWidth() : -1,
                 new ApiHttpClient.Callback<byte[]>() {
                     @Override
-                    public void onSuccess(byte[] data) {
-                        Drawable drawable = new BitmapDrawable(getResources(),
-                                BitmapFactory.decodeByteArray(data, 0, data.length));
-                        mThumbnailCache.put(image.getId(), drawable);
-                        writeImage(image, data, thumbnail);
-                        callback.onImageAvailable(imageView, drawable);
+                    public void onSuccess(final byte[] data) {
+                        doInBackground(new Runnable() {
+                            @Override
+                            public void run() {
+                                Drawable drawable = new BitmapDrawable(getResources(),
+                                        BitmapFactory.decodeByteArray(data, 0, data.length));
+                                if (imageType == ImageType.THUMBNAIL) {
+                                    mThumbnailCache.put(image.getId(), drawable);
+                                }
+
+                                writeImage(image, data, imageType);
+                                callback.onImageAvailable(imageView, drawable);
+                            }
+                        });
                     }
 
                     @Override
@@ -192,5 +247,55 @@ public class ImageStore extends Service {
                 });
 
         mRequestHandleMap.put(imageView, req);
+    }
+
+    public void loadBlurredImage(final Image image, final Callback callback) {
+        doInBackground(new Runnable() {
+            @Override
+            public void run() {
+                File blurredImagePath = getPath(image, ImageType.BLURRED);
+                Bitmap bitmap;
+                if (!blurredImagePath.exists()) {
+                    bitmap = renderBlurredBitmap(BitmapFactory.decodeFile(
+                            getPath(image, ImageType.FULL_SIZE).getAbsolutePath()));
+                    writeImage(image, bitmap, ImageType.BLURRED);
+                } else {
+                    bitmap = BitmapFactory.decodeFile(blurredImagePath.getAbsolutePath());
+                }
+                callback.onImageAvailable(null, new BitmapDrawable(getResources(), bitmap));
+            }
+        });
+    }
+
+    private Bitmap renderBlurredBitmap(Bitmap bitmap) {
+        // TODO: don't hard code size
+        Bitmap src = Bitmap.createScaledBitmap(bitmap, 500, 500, true);
+
+        Bitmap outBitmap = src.copy(src.getConfig(), true);
+
+        final RenderScript rs = RenderScript.create(this);
+        final Allocation input = Allocation.createFromBitmap(rs, src);
+        final Allocation output = Allocation.createFromBitmap(rs, outBitmap);
+
+        final ScriptIntrinsicBlur script =
+                ScriptIntrinsicBlur.create(rs, Element.U8_4(rs));
+        script.setRadius(25f);
+        script.setInput(input);
+        script.forEach(output);
+        output.copyTo(outBitmap);
+
+        rs.destroy();
+
+        return outBitmap;
+    }
+
+    private void doInBackground(final Runnable runnable) {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                runnable.run();
+                return null;
+            }
+        }.execute();
     }
 }

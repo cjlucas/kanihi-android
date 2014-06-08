@@ -234,22 +234,33 @@ public class MusicPlayerFragment extends Fragment
         }
 
         // TODO: call getTrackImages async, (via loader?)
-        List<Image> images = mDataService.getTrackImages(track);
+        final List<Image> images = mDataService.getTrackImages(track);
         if (images.size() == 0) {
             return;
         }
 
-        mImageService.loadImage(images.get(0), mImageView, false, new ImageStore.Callback() {
-            @Override
-            public void onImageAvailable(final ImageView imageView, final Drawable drawable) {
-                runOnUiThread(new Runnable() {
+        mImageService.loadImage(images.get(0), mImageView, ImageStore.ImageType.FULL_SIZE,
+                new ImageStore.Callback() {
                     @Override
-                    public void run() {
-                        imageView.setImageDrawable(drawable);
+                    public void onImageAvailable(final ImageView imageView, final Drawable drawable) {
+                        if (drawable.getIntrinsicHeight() != drawable.getIntrinsicWidth()) {
+                            mImageService.loadBlurredImage(images.get(0), new ImageStore.Callback() {
+                                @Override
+                                public void onImageAvailable(ImageView ignore, final Drawable blurredDrawable) {
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            getView().findViewById(R.id.image_frame).setBackground(blurredDrawable);
+                                            imageView.setImageDrawable(drawable);
+                                        }
+                                    });
+                                }
+                            });
+                        } else {
+                            ModelListFragment.ImageAttacher.attach(getActivity(), imageView, drawable);
+                        }
                     }
                 });
-            }
-        });
     }
 
     private void runOnUiThread(Runnable runnable) {
