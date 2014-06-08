@@ -92,14 +92,18 @@ public class MusicPlayerFragment extends Fragment
 
         mPlayPauseButton = view.findViewById(R.id.toggle_play_pause);
         mPlayPauseButton.setOnClickListener(this);
+
+        if (mBoomboxService != null && getBoombox().getPlaylist().size() > 0) {
+            updateTrackInfoUi(mBoomboxService.getTrack(getBoombox().getCurrentProvider()));
+        }
     }
 
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
+        Log.d(TAG, "onAttach");
 
         Context appContext = activity.getApplicationContext();
-        Log.d(TAG, appContext.toString());
         if (appContext != null) {
             DataServiceConnector.connect(appContext, this);
             ImageServiceConnector.connect(appContext, this);
@@ -144,6 +148,11 @@ public class MusicPlayerFragment extends Fragment
         if (mAddTracks != null) {
             mBoomboxService.addTracks(mAddTracks, true);
             mAddTracks = null;
+        }
+
+        // TODO: Boombox.getCurrentProvider doesn't check if the playlist is empty
+        if (getBoombox().getPlaylist().size() > 0) {
+            updateTrackInfoUi(mBoomboxService.getTrack(getBoombox().getCurrentProvider()));
         }
     }
 
@@ -218,22 +227,10 @@ public class MusicPlayerFragment extends Fragment
     @Override
     public void onPlaybackStart(Boombox boombox, final AudioDataProvider audioDataProvider) {
         Log.d(TAG, "onPlaybackStart");
-
-        if (getActivity() == null)
-            return;
-
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Track track = mBoomboxService.getTrack(audioDataProvider);
-
-                ((TextView)getView().findViewById(R.id.track_title)).setText(track.getTitle());
-                ((TextView)getView().findViewById(R.id.track_artist_name)).setText(track.getTrackArtist().getName());
-                ((TextView)getView().findViewById(R.id.album_name)).setText(track.getDisc().getAlbum().getTitle());
-
-
-                loadCurrentTrackImage();
-
+                updateTrackInfoUi(mBoomboxService.getTrack(audioDataProvider));
             }
         });
     }
@@ -263,31 +260,49 @@ public class MusicPlayerFragment extends Fragment
 
     }
 
+    private void updateTrackInfoUi(Track track) {
+        if (getActivity() == null || getView() == null) {
+            return;
+        }
+
+        ((TextView)getView().findViewById(R.id.track_title)).setText(track.getTitle());
+        ((TextView)getView().findViewById(R.id.track_artist_name)).setText(track.getTrackArtist().getName());
+        ((TextView)getView().findViewById(R.id.album_name)).setText(track.getDisc().getAlbum().getTitle());
+
+        loadCurrentTrackImage();
+    }
+
     private void loadCurrentTrackImage() {
-        if (mBoomboxService != null
-                && mDataService != null
-                && mImageService != null) {
-            Track track = mBoomboxService.getTrack(getBoombox().getCurrentProvider());
-            List<Image> images = mDataService.getTrackImages(track);
-            Log.d(TAG, images.toString());
-            if (images.size() > 0) {
-                mImageService.loadImage(images.get(0), mImageView, false, new ImageStore.Callback() {
+        if (mBoomboxService == null || mDataService == null || mImageService == null) {
+            return;
+        }
+
+        Track track = mBoomboxService.getTrack(getBoombox().getCurrentProvider());
+        List<Image> images = mDataService.getTrackImages(track);
+
+        if (images.size() == 0) {
+            return;
+        }
+
+        mImageService.loadImage(images.get(0), mImageView, false, new ImageStore.Callback() {
+            @Override
+            public void onImageAvailable(ImageView imageView, final Drawable drawable) {
+                runOnUiThread(new Runnable() {
                     @Override
-                    public void onImageAvailable(ImageView imageView, final Drawable drawable) {
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mImageView.setAdjustViewBounds(true);
-                                    mImageView.setMinimumHeight(getView().getMeasuredWidth());
-                                    mImageView.setMaxHeight(getView().getMeasuredWidth());
-                                    mImageView.setImageDrawable(drawable);
-                                }
-                            });
-                        }
+                    public void run() {
+                        mImageView.setAdjustViewBounds(true);
+                        mImageView.setMinimumHeight(getView().getMeasuredWidth());
+                        mImageView.setMaxHeight(getView().getMeasuredWidth());
+                        mImageView.setImageDrawable(drawable);
                     }
                 });
             }
+        });
+    }
+
+    private void runOnUiThread(Runnable runnable) {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(runnable);
         }
     }
 }
