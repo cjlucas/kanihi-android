@@ -42,11 +42,8 @@ public class MusicPlayerFragment extends Fragment
                 ImageServiceConnector.Listener,
                 BoomboxServiceConnector.Listener,
                 View.OnClickListener,
-                BoomboxInfoListener,
-                LoaderManager.LoaderCallbacks<List<Track>> {
+                BoomboxInfoListener {
     private static final String TAG = "MusicPlayerFragment";
-    public static final String ARG_MODE = "mode";
-    public static final String ARG_ADD_TRACKS = "add_tracks";
 
     private BoomboxService mBoomboxService;
     private ImageStore mImageService;
@@ -58,17 +55,24 @@ public class MusicPlayerFragment extends Fragment
     private View mPlayPauseButton;
     private View mNextButton;
 
-    // temp storage if loader is executed before BoomboxService is connected
-    private List<Track> mAddTracks;
-
-    public enum PlaylistMode {
-        RESET_PLAYLIST
-    }
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
+    }
+
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        Log.d(TAG, "onAttach");
+
+        Context appContext = activity.getApplicationContext();
+        if (appContext != null) {
+            DataServiceConnector.connect(appContext, this);
+            ImageServiceConnector.connect(appContext, this);
+            BoomboxServiceConnector.connect(appContext, this);
+        }
+
     }
 
     @Override
@@ -95,19 +99,6 @@ public class MusicPlayerFragment extends Fragment
 
         if (mBoomboxService != null && getBoombox().getPlaylist().size() > 0) {
             updateTrackInfoUi(mBoomboxService.getTrack(getBoombox().getCurrentProvider()));
-        }
-    }
-
-    @Override
-    public void onAttach(Activity activity) {
-        super.onAttach(activity);
-        Log.d(TAG, "onAttach");
-
-        Context appContext = activity.getApplicationContext();
-        if (appContext != null) {
-            DataServiceConnector.connect(appContext, this);
-            ImageServiceConnector.connect(appContext, this);
-            BoomboxServiceConnector.connect(appContext, this);
         }
 
     }
@@ -141,14 +132,9 @@ public class MusicPlayerFragment extends Fragment
 
     @Override
     public void onBoomboxServiceConnected(BoomboxService boomboxService) {
-        Log.d(TAG, "onBoomboxServiceConnted");
+        Log.d(TAG, "onBoomboxServiceConnected");
         mBoomboxService = boomboxService;
         getBoombox().registerInfoListener(this);
-
-        if (mAddTracks != null) {
-            mBoomboxService.addTracks(mAddTracks, true);
-            mAddTracks = null;
-        }
 
         // TODO: Boombox.getCurrentProvider doesn't check if the playlist is empty
         if (getBoombox().getPlaylist().size() > 0) {
@@ -169,48 +155,18 @@ public class MusicPlayerFragment extends Fragment
 
     @Override
     public void onImageServiceDisconnected() {
-
+        mImageService = null;
     }
 
     @Override
     public void onDataServiceConnected(DataService dataService) {
         Log.d(TAG, "onDataServiceConnected");
         mDataService = dataService;
-
-        if (getArguments().getStringArrayList(ARG_ADD_TRACKS) != null)
-            getLoaderManager().initLoader(1, null, this);
     }
 
     @Override
     public void onDataServiceDisconnected() {
-    }
-
-    @Override
-    public Loader<List<Track>> onCreateLoader(int id, Bundle args) {
-
-        return new DataServiceLoader<>(getActivity(), mDataService, new Callable<List<Track>>() {
-            @Override
-            public List<Track> call() throws Exception {
-                return mDataService.getModels(Track.class,
-                        getArguments().getStringArrayList(ARG_ADD_TRACKS));
-            }
-        });
-    }
-
-    @Override
-    public void onLoadFinished(Loader<List<Track>> loader, List<Track> data) {
-        if (mBoomboxService != null) {
-            Log.d(TAG, "yo im here");
-            mBoomboxService.addTracks(data, true);
-        } else {
-            mAddTracks = data;
-        }
-
-    }
-
-    @Override
-    public void onLoaderReset(Loader<List<Track>> loader) {
-
+        mDataService = null;
     }
 
     @Override
@@ -269,31 +225,27 @@ public class MusicPlayerFragment extends Fragment
         ((TextView)getView().findViewById(R.id.track_artist_name)).setText(track.getTrackArtist().getName());
         ((TextView)getView().findViewById(R.id.album_name)).setText(track.getDisc().getAlbum().getTitle());
 
-        loadCurrentTrackImage();
+        loadTrackImage(track);
     }
 
-    private void loadCurrentTrackImage() {
-        if (mBoomboxService == null || mDataService == null || mImageService == null) {
+    private void loadTrackImage(Track track) {
+        if (mDataService == null || mImageService == null) {
             return;
         }
 
-        Track track = mBoomboxService.getTrack(getBoombox().getCurrentProvider());
+        // TODO: call getTrackImages async, (via loader?)
         List<Image> images = mDataService.getTrackImages(track);
-
         if (images.size() == 0) {
             return;
         }
 
         mImageService.loadImage(images.get(0), mImageView, false, new ImageStore.Callback() {
             @Override
-            public void onImageAvailable(ImageView imageView, final Drawable drawable) {
+            public void onImageAvailable(final ImageView imageView, final Drawable drawable) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mImageView.setAdjustViewBounds(true);
-                        mImageView.setMinimumHeight(getView().getMeasuredWidth());
-                        mImageView.setMaxHeight(getView().getMeasuredWidth());
-                        mImageView.setImageDrawable(drawable);
+                        imageView.setImageDrawable(drawable);
                     }
                 });
             }
@@ -303,6 +255,8 @@ public class MusicPlayerFragment extends Fragment
     private void runOnUiThread(Runnable runnable) {
         if (getActivity() != null) {
             getActivity().runOnUiThread(runnable);
+        } else {
+            Log.d(TAG, "runOnUiThread: getActivity() returned null");
         }
     }
 }

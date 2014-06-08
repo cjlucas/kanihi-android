@@ -27,8 +27,10 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import net.cjlucas.kanihi.R;
+import net.cjlucas.kanihi.data.BoomboxService;
 import net.cjlucas.kanihi.data.DataService;
 import net.cjlucas.kanihi.data.ImageStore;
+import net.cjlucas.kanihi.data.connectors.BoomboxServiceConnector;
 import net.cjlucas.kanihi.data.connectors.DataServiceConnector;
 import net.cjlucas.kanihi.data.connectors.ImageServiceConnector;
 import net.cjlucas.kanihi.data.loaders.DataServiceLoader;
@@ -51,12 +53,16 @@ import java.util.concurrent.Callable;
  * Created by chris on 3/21/14.
  */
 public class SingleAlbumListFragment extends ListFragment
-    implements DataServiceConnector.Listener, ImageServiceConnector.Listener,
+    implements DataServiceConnector.Listener,
+        ImageServiceConnector.Listener,
+        BoomboxServiceConnector.Listener,
         LoaderManager.LoaderCallbacks<SingleAlbumListFragment.PlaylistData>{
+
     public static final String ARG_ALBUM_UUID = "album_uuid";
 
     private ImageStore mImageStore;
     private DataService mDataService;
+    private BoomboxService mBoomboxService;
 
     public class PlaylistData {
         Album mAlbum;
@@ -64,7 +70,7 @@ public class SingleAlbumListFragment extends ListFragment
         Map<Disc, List<Track>> mDiscTracksMap = new HashMap<>();
     }
 
-    private class PlaylistListAdapter extends BaseAdapter {
+    private class SingleAlbumListAdapter extends BaseAdapter {
         private final int ROW_ALBUM_HEADER = 0;
         private final int ROW_DISC_HEADER = 1;
         private final int ROW_TRACK = 2;
@@ -77,7 +83,7 @@ public class SingleAlbumListFragment extends ListFragment
         private Map<Integer, Integer> mRowPositionRowTypeMap;
         private Bitmap mBlurredBitmap;
 
-        public PlaylistListAdapter(Context context, int resourceId, PlaylistData data) {
+        public SingleAlbumListAdapter(Context context, int resourceId, PlaylistData data) {
             mAlbum = data.mAlbum;
             mDiscs = data.mDiscs;
             mDiscTrackMap = data.mDiscTracksMap;
@@ -249,11 +255,6 @@ public class SingleAlbumListFragment extends ListFragment
             ((TextView)view.findViewById(R.id.disc_title)).setText(discRowText);
         }
 
-        private void configureRowDiscFooter(int position, View view) {
-            // the footer is the same as row_track except for the bottom padding
-            configureRowTrack(position, view);
-        }
-
         private void configureRowTrack(int position, View view) {
             Track track = getItem(position);
             TrackArtist trackArtist = track.getTrackArtist();
@@ -271,7 +272,6 @@ public class SingleAlbumListFragment extends ListFragment
             TextView leftView = (TextView)view.findViewById(R.id.left_text);
             leftView.setText(track.getTitle());
         }
-
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
@@ -321,6 +321,7 @@ public class SingleAlbumListFragment extends ListFragment
         if (appContext != null) {
             DataServiceConnector.connect(appContext, this);
             ImageServiceConnector.connect(appContext, this);
+            BoomboxServiceConnector.connect(appContext, this);
         }
     }
 
@@ -385,7 +386,7 @@ public class SingleAlbumListFragment extends ListFragment
 
     @Override
     public void onLoadFinished(Loader<PlaylistData> loader, PlaylistData data) {
-        setListAdapter(new PlaylistListAdapter(getActivity(), -1, data));
+        setListAdapter(new SingleAlbumListAdapter(getActivity(), -1, data));
     }
 
     @Override
@@ -401,7 +402,7 @@ public class SingleAlbumListFragment extends ListFragment
 
     @Override
     public void onDataServiceDisconnected() {
-
+        mDataService = null;
     }
 
     @Override
@@ -411,25 +412,36 @@ public class SingleAlbumListFragment extends ListFragment
 
     @Override
     public void onImageServiceDisconnected() {
+        mImageStore = null;
+    }
 
+    @Override
+    public void onBoomboxServiceConnected(BoomboxService boomboxService) {
+        mBoomboxService = boomboxService;
+    }
+
+    @Override
+    public void onBoomboxServiceDisconnected() {
+        mBoomboxService = null;
     }
 
     @Override
     public void onListItemClick(ListView l, View v, int position, long id) {
         Fragment fragment = new MusicPlayerFragment();
-        PlaylistListAdapter adapter = (PlaylistListAdapter)getListAdapter();
+        SingleAlbumListAdapter adapter = (SingleAlbumListAdapter)getListAdapter();
 
-        Bundle args = new Bundle();
-        ArrayList<String> uuids = new ArrayList<>();
+        List<Track> tracks = new ArrayList<>();
         for (Disc disc : adapter.mDiscs) {
             for (Track track : adapter.mDiscTrackMap.get(disc)) {
-                uuids.add(track.getUuid());
+                tracks.add(track);
             }
         }
 
-        args.putStringArrayList(MusicPlayerFragment.ARG_ADD_TRACKS, uuids);
+        mBoomboxService.addTracks(tracks, true);
 
-        fragment.setArguments(args);
-        getFragmentManager().beginTransaction().replace(getId(), fragment).commit();
+        getFragmentManager().beginTransaction()
+                .setCustomAnimations(R.animator.fade_in, R.animator.fade_out)
+                .replace(getId(), fragment)
+                .commit();
     }
 }
