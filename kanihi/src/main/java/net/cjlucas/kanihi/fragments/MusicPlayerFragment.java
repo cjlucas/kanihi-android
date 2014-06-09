@@ -15,6 +15,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import net.cjlucas.boombox.Boombox;
@@ -30,8 +31,11 @@ import net.cjlucas.kanihi.data.connectors.ImageServiceConnector;
 import net.cjlucas.kanihi.data.loaders.DataServiceLoader;
 import net.cjlucas.kanihi.models.Image;
 import net.cjlucas.kanihi.models.Track;
+import net.cjlucas.kanihi.utils.TextUtils;
 
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Callable;
 
 /**
@@ -54,6 +58,23 @@ public class MusicPlayerFragment extends Fragment
     private View mPrevButton;
     private View mPlayPauseButton;
     private View mNextButton;
+    private TextView mTimeElapsedView;
+    private TextView mTimeRemainingView;
+    private SeekBar mTimeProgressBar;
+
+    private Timer mTimer;
+
+    private class UpdatePlayerInfoUiTask extends TimerTask {
+        @Override
+        public void run() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    updatePlayerInfoUi();
+                }
+            });
+        }
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -97,10 +118,28 @@ public class MusicPlayerFragment extends Fragment
         mPlayPauseButton = view.findViewById(R.id.toggle_play_pause);
         mPlayPauseButton.setOnClickListener(this);
 
+        mTimeElapsedView = (TextView)view.findViewById(R.id.time_elapsed);
+        mTimeRemainingView = (TextView)view.findViewById(R.id.time_remaining);
+        mTimeProgressBar = (SeekBar)view.findViewById(R.id.time_progress_bar);
+
         if (mBoomboxService != null && getBoombox().getPlaylist().size() > 0) {
             updateTrackInfoUi(mBoomboxService.getTrack(getBoombox().getCurrentProvider()));
         }
 
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mTimer = new Timer();
+        mTimer.schedule(new UpdatePlayerInfoUiTask(), 0, 1000);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mTimer.cancel();
+        mTimer = null;
     }
 
     @Override
@@ -214,6 +253,21 @@ public class MusicPlayerFragment extends Fragment
     @Override
     public void onBufferingUpdate(Boombox boombox, AudioDataProvider audioDataProvider, int i) {
 
+    }
+
+    private void updatePlayerInfoUi() {
+        Boombox boombox = getBoombox();
+        if (boombox == null)
+            return;
+
+        double timeElapsed = boombox.getCurrentPosition() / 1000.0;
+        mTimeElapsedView.setText(TextUtils.getTimeCode((int)timeElapsed));
+
+        double timeRemaining = (boombox.getDuration() / 1000.0) - timeElapsed;
+        mTimeRemainingView.setText("-" + TextUtils.getTimeCode((int)timeRemaining));
+
+        double trackDuration = boombox.getDuration() / 1000.0;
+        mTimeProgressBar.setProgress((int)(timeElapsed * 100 / trackDuration));
     }
 
     private void updateTrackInfoUi(Track track) {
