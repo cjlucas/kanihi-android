@@ -447,6 +447,7 @@ public class SingleAlbumListFragment extends ListFragment
 
         getFragmentManager().beginTransaction()
                 .setCustomAnimations(R.animator.fade_in, R.animator.fade_out)
+                .addToBackStack(null)
                 .replace(getId(), fragment)
                 .commit();
     }
