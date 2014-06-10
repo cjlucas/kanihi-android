@@ -72,8 +72,8 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="android-async-http-1.4.5-20140329.151824-5" level="project" />
     <orderEntry type="library" exported="" name="json-smart-1.2" level="project" />
+    <orderEntry type="library" exported="" name="boombox-1.0.3" level="project" />
     <orderEntry type="library" exported="" name="ormlite-android-fork" level="project" />
-    <orderEntry type="library" exported="" name="boombox-1.0.2" level="project" />
     <orderEntry type="library" exported="" name="support-v4-19.0.1" level="project" />
     <orderEntry type="library" exported="" name="ormlite-core" level="project" />
   </component>
