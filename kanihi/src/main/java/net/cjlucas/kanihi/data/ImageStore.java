@@ -193,7 +193,8 @@ public class ImageStore extends Service {
     public void loadImage(final Image image, final ImageView imageView, final ImageType imageType,
                           final Callback callback) {
         // cancel image request on this view if one is pending
-        cancelRequest(imageView);
+        if (imageView != null)
+            cancelRequest(imageView);
 
         if (imageType == ImageType.THUMBNAIL && mThumbnailCache.get(image.getId()) != null) {
             Log.d(TAG, "loadImage: loading from cache");
@@ -246,7 +247,8 @@ public class ImageStore extends Service {
                     }
                 });
 
-        mRequestHandleMap.put(imageView, req);
+        if (imageView != null)
+            mRequestHandleMap.put(imageView, req);
     }
 
     public void loadBlurredImage(final Image image, final Callback callback) {
@@ -297,5 +299,18 @@ public class ImageStore extends Service {
                 return null;
             }
         }.execute();
+    }
+
+    public Bitmap resizeBitmap(Bitmap original, int maxWidth, int maxHeight) {
+        int width, height;
+
+        if (maxWidth > maxHeight) {
+            width = maxWidth;
+            height = (int)(original.getHeight() * (width * 1.0 / original.getWidth()));
+        } else {
+            height = maxHeight;
+            width = (int)(original.getWidth() * (height * 1.0 / original.getHeight()));
+        }
+        return Bitmap.createScaledBitmap(original, width, height, false);
     }
 }
