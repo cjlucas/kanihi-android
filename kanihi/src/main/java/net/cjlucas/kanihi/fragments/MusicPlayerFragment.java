@@ -55,9 +55,9 @@ public class MusicPlayerFragment extends Fragment
 
     private ImageView mImageView;
 
-    private View mPrevButton;
-    private View mPlayPauseButton;
-    private View mNextButton;
+    private ImageView mPrevButton;
+    private ImageView mPlayPauseButton;
+    private ImageView mNextButton;
     private TextView mTimeElapsedView;
     private TextView mTimeRemainingView;
     private SeekBar mTimeProgressBar;
@@ -109,13 +109,13 @@ public class MusicPlayerFragment extends Fragment
 
         mImageView = (ImageView)view.findViewById(R.id.imageView);
 
-        mPrevButton = view.findViewById(R.id.prev);
+        mPrevButton = (ImageView)view.findViewById(R.id.prev);
         mPrevButton.setOnClickListener(this);
 
-        mNextButton = view.findViewById(R.id.next);
+        mNextButton = (ImageView)view.findViewById(R.id.next);
         mNextButton.setOnClickListener(this);
 
-        mPlayPauseButton = view.findViewById(R.id.toggle_play_pause);
+        mPlayPauseButton = (ImageView)view.findViewById(R.id.toggle_play_pause);
         mPlayPauseButton.setOnClickListener(this);
 
         mTimeElapsedView = (TextView)view.findViewById(R.id.time_elapsed);
@@ -211,6 +211,9 @@ public class MusicPlayerFragment extends Fragment
     @Override
     public void onClick(View v) {
         if (v == mPlayPauseButton) {
+            // update icon to reflect new play/pause state
+            mPlayPauseButton.setImageResource(getBoombox().isPlaying()
+                    ? R.drawable.pause : R.drawable.play);
             getBoombox().togglePlayPause();
         } else if (v == mNextButton) {
             getBoombox().playNext();
@@ -259,6 +262,10 @@ public class MusicPlayerFragment extends Fragment
         Boombox boombox = getBoombox();
         if (boombox == null)
             return;
+
+        mPlayPauseButton.setImageResource(boombox.isPlaying() ? R.drawable.pause : R.drawable.play);
+        mPrevButton.setEnabled(boombox.hasPrevious());
+        mNextButton.setEnabled(boombox.hasNext());
 
         double timeElapsed = boombox.getCurrentPosition() / 1000.0;
         mTimeElapsedView.setText(TextUtils.getTimeCode((int)timeElapsed));

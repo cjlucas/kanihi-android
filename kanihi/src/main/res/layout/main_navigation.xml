@@ -10,12 +10,27 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <ListView
-        android:id="@+id/menu_list"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="start"
-        android:choiceMode="singleChoice"
-        android:dividerHeight="1dp"
-        android:background="#fff"/>
+    <RelativeLayout
+        android:id="@+id/drawer"
+        android:layout_gravity="left"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ListView
+            android:id="@+id/menu_list"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_alignParentTop="true"
+            android:choiceMode="singleChoice"
+            android:dividerHeight="1dp"
+            android:background="#fff"/>
+
+        <View
+            android:layout_width="fill_parent"
+            android:layout_height="200dp"
+            android:layout_alignParentBottom="true"
+            android:background="#ff0000"/>
+
+        </RelativeLayout>
+
 </android.support.v4.widget.DrawerLayout>
